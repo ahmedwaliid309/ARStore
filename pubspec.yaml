@@ -1,0 +1,42 @@
+name: decora
+description: "Decora - متجر أثاث بالواقع المعزز"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.0
+
+# ملاحظة: لو شغّلت flutter create و flutter pub add زي ما في README، استخدم
+# ملفك الحالي وقارن بيه بس. الملف ده نسخة جاهزة لو حبيت تبدأ منها.
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: any
+  go_router: ^14.6.2
+  provider: ^6.1.2
+  flutter_screenutil: ^5.9.3
+  cached_network_image: ^3.4.1
+  shared_preferences: ^2.3.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/models/
+
+  fonts:
+    - family: Tajawal
+      fonts:
+        - asset: assets/fonts/Tajawal-Regular.ttf
+        - asset: assets/fonts/Tajawal-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Tajawal-Bold.ttf
+          weight: 700
