@@ -44,8 +44,8 @@ class DecoraApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light,
           // عربي RTL. لو التصميم إنجليزي: Locale('en') في الاتنين تحت.
-          locale: const Locale('ar'),
-          supportedLocales: const [Locale('ar')],
+          locale: const Locale('en'),
+          supportedLocales: const [Locale('en')],
           localizationsDelegates: const [
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
