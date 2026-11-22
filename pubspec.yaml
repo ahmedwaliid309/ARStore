@@ -19,6 +19,8 @@ dependencies:
   flutter_screenutil: ^5.9.3
   cached_network_image: ^3.4.1
   shared_preferences: ^2.3.3
+  lottie: ^3.1.0
+  smooth_page_indicator: ^1.2.1
 
 dev_dependencies:
   flutter_test:
@@ -31,6 +33,7 @@ flutter:
   assets:
     - assets/images/
     - assets/models/
+    - assets/lottie/Decora_Splash.json
 
   fonts:
     - family: Tajawal
