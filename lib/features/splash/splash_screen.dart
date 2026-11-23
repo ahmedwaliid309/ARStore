@@ -13,33 +13,58 @@
 //  pubspec.yaml (وليد بس). الألوان من AppColors، والأحجام بـ .w .h .r .sp،
 //  والتنقل من AppRoutes. الطلبات في initState (مش build).
 // ══════════════════════════════════════════════════════════
+
+
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 import 'package:go_router/go_router.dart';
 import 'package:decora/core/router/app_router.dart';
-import 'package:decora/core/widgets/placeholder_screen.dart';
 
-class SplashScreen extends StatelessWidget {
+class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
+
+  late final AnimationController _controller =
+      AnimationController(vsync: this);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return PlaceholderScreen(
-      title: 'Splash',
-      owner: 'أحمد وليد',
-      branch: 'feature/splash',
-      tasks: const [
-        'شعار Decora بحركة بسيطة (Fade أو Scale)',
-        'بعد ثانيتين: أول مرة ← Onboarding، وبعد كده ← Home (قراءة القيمة من shared_preferences لاحقاً)',
-        'حالياً: انتقال مباشر لـ Onboarding',
-      ],
-      actions: [
-        ElevatedButton(
-          onPressed: () => context.go(AppRoutes.onboarding),
-          child: const Text('الانتقال لـ Onboarding'),
+    return Scaffold(
+      backgroundColor: const Color(0xFF17453C),
+      body: SizedBox.expand(
+        child: Lottie.asset(
+          'assets/lottie/Decora_Splash.json',
+          controller: _controller,
+          fit: BoxFit.cover,
+          frameRate: FrameRate.max,
+          onLoaded: (composition) {
+            _controller
+              ..duration = composition.duration
+              ..forward().whenComplete(() async {
+                await Future.delayed(
+                  const Duration(milliseconds: 400),
+                );
+
+                if (mounted) {
+                  context.go(AppRoutes.onboarding);
+                }
+              });
+          },
         ),
-        const SizedBox(height: 12),
-      ],
+      ),
     );
   }
 }
+
