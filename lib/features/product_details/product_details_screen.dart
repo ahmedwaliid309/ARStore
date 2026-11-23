@@ -94,7 +94,6 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           children: [
             Expanded(
                 child: Stack(
-
                   children: [
                     Stack(
                       children: [
@@ -105,10 +104,20 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                               color: AppColors.background,
                             ),
 
-                            child: Image.network(
-                              '',
-                              fit: BoxFit.cover,
-                            )
+                            child: _product!.images.isEmpty
+                              ? Center(
+                                child: Text('No image available'),
+                                )
+                              :Image.network(
+                                _product!.images.first,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace){
+                                  print('Image error: $error');
+                                  return Center(
+                                    child: Text('No image available'),
+                                  );
+                                },
+                               ),
                         ),
                         Padding(
                             padding: EdgeInsetsGeometry.symmetric(horizontal: 24.w , vertical: 10.h),
@@ -218,7 +227,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    _product!.name,
+                                     _product!.name,
                                     style: TextStyle(
                                       color: AppColors.primary,
                                       fontSize: 28.sp,
