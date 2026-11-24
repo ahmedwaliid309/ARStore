@@ -14,33 +14,888 @@
 //  pubspec.yaml (وليد بس). الألوان من AppColors، والأحجام بـ .w .h .r .sp،
 //  والتنقل من AppRoutes. الطلبات في initState (مش build).
 // ══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
+//  الشاشة    : Authentication (Login / Register / Reset password)
+//  المسؤول   : سارة
+//  الـ Branch  : feature/auth
+//  الملف     : lib/features/auth/auth_screen.dart
+// ══════════════════════════════════════════════════════════
+//  فريمات Figma الخمسة جوه شاشة واحدة (من غير Routes جديدة):
+//    login ← register ← forgotEmail ← otp ← newPassword
+//  - Login و Register متربطين بـ AuthProvider.signIn و register.
+//  - خطوات Reset password UI بس دلوقتي.
+// ══════════════════════════════════════════════════════════
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
-import 'package:decora/core/router/app_router.dart';
-import 'package:decora/core/widgets/placeholder_screen.dart';
+import 'package:provider/provider.dart';
 
-class AuthScreen extends StatelessWidget {
+import 'package:decora/core/router/app_router.dart';
+import 'package:decora/core/theme/app_colors.dart';
+import 'package:decora/providers/auth_provider.dart';
+
+/// خطوات الشاشة (كل خطوة = فريم في Figma).
+enum _AuthStep { login, register, forgotEmail, otp, newPassword }
+
+class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
 
+  @override
+  State<AuthScreen> createState() => _AuthScreenState();
+}
+
+class _AuthScreenState extends State<AuthScreen> {
+  // Form key منفصل لكل خطوة عشان الحقول ما تتلخبطش لما نبدّل بينهم.
+  final Map<_AuthStep, GlobalKey<FormState>> _formKeys = {
+    for (final s in _AuthStep.values) s: GlobalKey<FormState>(),
+  };
+
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmController = TextEditingController();
+  final _newPasswordController = TextEditingController();
+  final _newConfirmController = TextEditingController();
+
+  // خانات كود التحقق الأربعة.
+  final List<TextEditingController> _otpControllers =
+  List.generate(4, (_) => TextEditingController());
+  final List<FocusNode> _otpFocus = List.generate(4, (_) => FocusNode());
+
+  _AuthStep _step = _AuthStep.login;
+  bool _isLoading = false;
+  bool _hidePassword = true;
+  bool _hideConfirm = true;
+  bool _hideNew = true;
+  bool _hideNewConfirm = true;
+  String? _errorMessage;
+
+  bool get _isLogin => _step == _AuthStep.login;
+  bool get _otpComplete => _otpControllers.every((c) => c.text.isNotEmpty);
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmController.dispose();
+    _newPasswordController.dispose();
+    _newConfirmController.dispose();
+    for (final c in _otpControllers) {
+      c.dispose();
+    }
+    for (final f in _otpFocus) {
+      f.dispose();
+    }
+    super.dispose();
+  }
+
+  // ───────── Logic ─────────
+
+  /// Here we move between steps and clear sensitive fields and old errors.
+  void _goTo(_AuthStep step) {
+    if (_isLoading) return;
+    FocusScope.of(context).unfocus();
+    _passwordController.clear();
+    _confirmController.clear();
+    _newPasswordController.clear();
+    _newConfirmController.clear();
+    if (step != _AuthStep.otp) {
+      for (final c in _otpControllers) {
+        c.clear();
+      }
+    }
+    setState(() {
+      _step = step;
+      _errorMessage = null;
+      _hidePassword = true;
+      _hideConfirm = true;
+      _hideNew = true;
+      _hideNewConfirm = true;
+    });
+  }
+
+  /// Here we validate, call AuthProvider, then handle Loading / Error / Success.
+  Future<void> _submitAuth() async {
+    FocusScope.of(context).unfocus();
+    if (!_formKeys[_step]!.currentState!.validate()) return;
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final auth = context.read<AuthProvider>();
+    bool success = false;
+    try {
+      success = _isLogin
+          ? await auth.signIn(_emailController.text, _passwordController.text)
+          : await auth.register(
+        _nameController.text,
+        _emailController.text,
+        _passwordController.text,
+      );
+    } catch (_) {
+      success = false;
+    }
+
+    // مهم: بعد أي await لازم نتأكد إن الشاشة لسه موجودة قبل استخدام context.
+    if (!mounted) return;
+
+    if (success) {
+      context.go(AppRoutes.home);
+    } else {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = _isLogin
+            ? 'Could not log in. Please check your email and password.'
+            : 'Could not create your account. Please check your details.';
+      });
+    }
+  }
+
+  /// خطوات Reset password: UI بس دلوقتي، بتنقل للخطوة اللي بعدها.
+  void _sendResetLink() {
+    if (!_formKeys[_AuthStep.forgotEmail]!.currentState!.validate()) return;
+    _goTo(_AuthStep.otp);
+  }
+
+  void _verifyCode() {
+    if (!_otpComplete) return;
+    _goTo(_AuthStep.newPassword);
+  }
+
+  void _savePassword() {
+    if (!_formKeys[_AuthStep.newPassword]!.currentState!.validate()) return;
+    _goTo(_AuthStep.login);
+  }
+
+  /// أزرار لسه مفيش لها Route أو Backend (Google / send again).
+  void _comingSoon() {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('Coming soon')));
+  }
+
+  // ───────── Validators ─────────
+
+  String? _validateName(String? v) =>
+      (v == null || v.trim().isEmpty) ? 'Please enter your name' : null;
+
+  String? _validateEmail(String? v) {
+    final value = v?.trim() ?? '';
+    if (value.isEmpty) return 'Please enter your email';
+    final ok = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value);
+    return ok ? null : 'Please enter a valid email';
+  }
+
+  String? _validateLoginPassword(String? v) =>
+      (v == null || v.isEmpty) ? 'Please enter your password' : null;
+
+  String? _validateNewPassword(String? v) {
+    if (v == null || v.isEmpty) return 'Please enter a password';
+    return v.length < 8 ? 'At least 8 characters' : null;
+  }
+
+  String? _validateConfirm(String? v) =>
+      v != _passwordController.text ? 'Passwords do not match' : null;
+
+  String? _validateNewConfirm(String? v) =>
+      v != _newPasswordController.text ? 'Passwords do not match' : null;
+
+  // ───────── Build ─────────
 
   @override
   Widget build(BuildContext context) {
-    return PlaceholderScreen(
-      title: 'Login / Register',
-      owner: 'سارة',
-      branch: 'feature/auth',
-      tasks: const [
-        'تبويبين: تسجيل دخول وحساب جديد',
-        'فورم مع تحقق (إيميل وباسورد)',
-        'AuthProvider.signIn و register (وهمي دلوقتي، Firebase لاحقاً)',
-        'نجاح ← Home، مع حالة تحميل ورسالة خطأ',
-      ],
-      actions: [
-        ElevatedButton(
-          onPressed: () => context.go(AppRoutes.home),
-          child: const Text('دخول (تجريبي)'),
+    return Scaffold(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(23.w, 16.h, 23.w, 24.h),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildLogo(),
+              SizedBox(height: 24.h),
+              _buildStep(),
+            ],
+          ),
         ),
-        const SizedBox(height: 12),
+      ),
+    );
+  }
+
+  Widget _buildStep() {
+    switch (_step) {
+      case _AuthStep.login:
+        return _buildLogin();
+      case _AuthStep.register:
+        return _buildRegister();
+      case _AuthStep.forgotEmail:
+        return _buildForgotEmail();
+      case _AuthStep.otp:
+        return _buildOtp();
+      case _AuthStep.newPassword:
+        return _buildNewPassword();
+    }
+  }
+
+  // ───────── Steps ─────────
+
+  Widget _buildLogin() {
+    return Form(
+      key: _formKeys[_AuthStep.login],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildHeader(
+            eyebrow: 'WELCOME BACK',
+            title: 'Make yourself at home',
+            subtitle: 'Sign in to continue your design journey.',
+          ),
+          SizedBox(height: 32.h),
+          _emailField(),
+          SizedBox(height: 16.h),
+          _labeledField(
+            label: 'Password',
+            labelColor: AppColors.textPrimary,
+            controller: _passwordController,
+            hint: 'At least 8 characters',
+            icon: Icons.lock_outline,
+            validator: _validateLoginPassword,
+            obscure: _hidePassword,
+            onToggleObscure: () =>
+                setState(() => _hidePassword = !_hidePassword),
+          ),
+          SizedBox(height: 14.h),
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: GestureDetector(
+              onTap: () => _goTo(_AuthStep.forgotEmail),
+              child: Text(
+                'Forgot password?',
+                style: TextStyle(
+                  fontSize: 14.sp,
+                  height: 17 / 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.secondary,
+                ),
+              ),
+            ),
+          ),
+          if (_errorMessage != null) ...[
+            SizedBox(height: 12.h),
+            _buildError(_errorMessage!),
+          ],
+          SizedBox(height: 24.h),
+          _primaryButton(
+            label: 'Login',
+            onPressed: _isLoading ? null : _submitAuth,
+            loading: _isLoading,
+          ),
+          SizedBox(height: 16.h),
+          _buildDivider(),
+          SizedBox(height: 16.h),
+          _googleButton(),
+          SizedBox(height: 40.h),
+          _buildFooter(
+            text: "Don't have an account?",
+            action: 'Register',
+            onTap: () => _goTo(_AuthStep.register),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRegister() {
+    return Form(
+      key: _formKeys[_AuthStep.register],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildHeader(
+            eyebrow: 'JOIN DECORA',
+            title: 'Create your account',
+            subtitle: 'Start designing a space that feels like you.',
+          ),
+          SizedBox(height: 32.h),
+          _labeledField(
+            label: 'Full name',
+            controller: _nameController,
+            hint: 'your name',
+            icon: Icons.person_outline,
+            validator: _validateName,
+            keyboardType: TextInputType.name,
+          ),
+          SizedBox(height: 16.h),
+          _emailField(),
+          SizedBox(height: 16.h),
+          _labeledField(
+            label: 'Password',
+            controller: _passwordController,
+            hint: 'At least 8 characters',
+            icon: Icons.lock_outline,
+            validator: _validateNewPassword,
+            obscure: _hidePassword,
+            onToggleObscure: () =>
+                setState(() => _hidePassword = !_hidePassword),
+          ),
+          SizedBox(height: 16.h),
+          _labeledField(
+            label: 'Confirm Password',
+            controller: _confirmController,
+            hint: 'At least 8 characters',
+            icon: Icons.lock_outline,
+            validator: _validateConfirm,
+            obscure: _hideConfirm,
+            onToggleObscure: () =>
+                setState(() => _hideConfirm = !_hideConfirm),
+          ),
+          // موجودة في فريم Register في Figma.
+          SizedBox(height: 14.h),
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: GestureDetector(
+              onTap: () => _goTo(_AuthStep.forgotEmail),
+              child: Text(
+                'Forgot password?',
+                style: TextStyle(
+                  fontSize: 14.sp,
+                  height: 17 / 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.secondary,
+                ),
+              ),
+            ),
+          ),
+          if (_errorMessage != null) ...[
+            SizedBox(height: 12.h),
+            _buildError(_errorMessage!),
+          ],
+          SizedBox(height: 24.h),
+          // النصوص زي فريم Figma حرفيًا (الزرار "Login" والفوتر "Register").
+          _primaryButton(
+            label: 'Login',
+            onPressed: _isLoading ? null : _submitAuth,
+            loading: _isLoading,
+          ),
+          SizedBox(height: 16.h),
+          _buildDivider(),
+          SizedBox(height: 16.h),
+          _googleButton(),
+          SizedBox(height: 40.h),
+          // الضغطة هنا بترجّع لـ Login عشان المستخدم ما يتحبسش في Register.
+          _buildFooter(
+            text: "Don't have an account?",
+            action: 'Register',
+            onTap: () => _goTo(_AuthStep.login),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildForgotEmail() {
+    return Form(
+      key: _formKeys[_AuthStep.forgotEmail],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildHeader(
+            eyebrow: 'ACCOUNT RECOVERY',
+            title: 'Reset your password',
+            subtitle: "Enter your email and we'll send you a secure reset link.",
+            subtitleSize: 12,
+            subtitleWeight: FontWeight.w400,
+          ),
+          SizedBox(height: 32.h),
+          _emailField(),
+          SizedBox(height: 24.h),
+          _primaryButton(label: 'Send Reset Link', onPressed: _sendResetLink),
+          SizedBox(height: 18.h),
+          Center(
+            child: GestureDetector(
+              onTap: () => _goTo(_AuthStep.login),
+              child: Text(
+                'Back to sign in',
+                style: TextStyle(
+                  fontSize: 14.sp,
+                  height: 17 / 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOtp() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildHeader(
+          eyebrow: 'ACCOUNT RECOVERY',
+          title: 'Check your inbox',
+          subtitle: 'Confirmation code sent for your email',
+          subtitleSize: 12,
+        ),
+        SizedBox(height: 54.h),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            for (int i = 0; i < 4; i++) ...[
+              if (i > 0) SizedBox(width: 12.w),
+              _otpBox(i),
+            ],
+          ],
+        ),
+        SizedBox(height: 24.h),
+        // TODO(اللوجيك): العداد ثابت دلوقتي (03:12) لحد ما نربط الكود الحقيقي.
+        Center(
+          child: Text(
+            'Code expires in: 03:12',
+            style: TextStyle(
+              fontSize: 14.sp,
+              height: 17 / 14,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
+        SizedBox(height: 60.h),
+        _primaryButton(
+          label: 'Verify',
+          onPressed: _otpComplete ? _verifyCode : null,
+        ),
+        SizedBox(height: 16.h),
+        _outlinedButton(label: 'send again', onPressed: _comingSoon),
+      ],
+    );
+  }
+
+  Widget _buildNewPassword() {
+    return Form(
+      key: _formKeys[_AuthStep.newPassword],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildHeader(
+            eyebrow: 'ACCOUNT RECOVERY',
+            title: 'Reset your password',
+            subtitle: 'Please enter your new password',
+          ),
+          SizedBox(height: 32.h),
+          _labeledField(
+            label: 'Password',
+            controller: _newPasswordController,
+            hint: 'At least 8 characters',
+            icon: Icons.lock_outline,
+            validator: _validateNewPassword,
+            obscure: _hideNew,
+            onToggleObscure: () => setState(() => _hideNew = !_hideNew),
+          ),
+          SizedBox(height: 16.h),
+          _labeledField(
+            label: 'Confirm Password',
+            controller: _newConfirmController,
+            hint: 'At least 8 characters',
+            icon: Icons.lock_outline,
+            validator: _validateNewConfirm,
+            obscure: _hideNewConfirm,
+            onToggleObscure: () =>
+                setState(() => _hideNewConfirm = !_hideNewConfirm),
+          ),
+          SizedBox(height: 24.h),
+          _primaryButton(label: 'Done', onPressed: _savePassword),
+        ],
+      ),
+    );
+  }
+
+  // ───────── Reusable pieces ─────────
+
+  // لوجو Decora الكامل (100×52 زي Figma). لو الملف مش موجود بنرجع للأيقونة
+  // القديمة، ولو دي كمان مش موجودة بنعرض نص.
+  Widget _buildLogo() {
+    return SizedBox(
+      height: 52.h,
+      child: Center(
+        child: Image.asset(
+          'assets/images/logo.png',
+          width: 100.w,
+          height: 52.h,
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => Image.asset(
+            'assets/images/Group 47.png',
+            height: 52.h,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => Text(
+              'decora',
+              style: TextStyle(
+                fontSize: 24.sp,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// العنوان الصغير + العنوان الكبير + الوصف (متكرر في كل الفريمات).
+  Widget _buildHeader({
+    required String eyebrow,
+    required String title,
+    required String subtitle,
+    double subtitleSize = 14,
+    FontWeight subtitleWeight = FontWeight.w500,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          eyebrow,
+          style: TextStyle(
+            fontSize: 11.sp,
+            height: 13 / 11,
+            letterSpacing: 0.44,
+            color: AppColors.secondary,
+          ),
+        ),
+        SizedBox(height: 8.h),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 28.sp,
+            height: 34 / 28,
+            fontWeight: FontWeight.w700,
+            color: AppColors.primary,
+          ),
+        ),
+        SizedBox(height: 4.h),
+        Text(
+          subtitle,
+          style: TextStyle(
+            fontSize: subtitleSize.sp,
+            fontWeight: subtitleWeight,
+            color: AppColors.textSecondary,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _emailField() {
+    return _labeledField(
+      label: 'Email address',
+      controller: _emailController,
+      hint: 'you@email.com',
+      icon: Icons.mail_outline,
+      validator: _validateEmail,
+      keyboardType: TextInputType.emailAddress,
+    );
+  }
+
+  /// Label صغير فوق الحقل (12) وبعده Gap 6 زي Figma.
+  Widget _labeledField({
+    required String label,
+    required TextEditingController controller,
+    required String hint,
+    required IconData icon,
+    required String? Function(String?) validator,
+    Color labelColor = AppColors.primary,
+    TextInputType? keyboardType,
+    bool obscure = false,
+    VoidCallback? onToggleObscure,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(fontSize: 12.sp, height: 15 / 12, color: labelColor),
+        ),
+        SizedBox(height: 6.h),
+        _field(
+          controller: controller,
+          hint: hint,
+          icon: icon,
+          validator: validator,
+          keyboardType: keyboardType,
+          obscure: obscure,
+          onToggleObscure: onToggleObscure,
+        ),
+      ],
+    );
+  }
+
+  /// Input بمقاسات Figma: ارتفاع 56 و Radius 12 و Border 0.5.
+  Widget _field({
+    required TextEditingController controller,
+    required String hint,
+    required IconData icon,
+    required String? Function(String?) validator,
+    TextInputType? keyboardType,
+    bool obscure = false,
+    VoidCallback? onToggleObscure,
+  }) {
+    OutlineInputBorder border(Color color) => OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12.r),
+      borderSide: BorderSide(color: color, width: 0.5),
+    );
+
+    return TextFormField(
+      controller: controller,
+      validator: validator,
+      keyboardType: keyboardType,
+      obscureText: obscure,
+      enabled: !_isLoading,
+      style: TextStyle(
+        fontSize: 16.sp,
+        fontWeight: FontWeight.w500,
+        color: AppColors.textPrimary,
+      ),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(
+          fontSize: 16.sp,
+          fontWeight: FontWeight.w500,
+          color: AppColors.textSecondary,
+        ),
+        prefixIcon: Padding(
+          padding: EdgeInsetsDirectional.only(start: 16.w, end: 10.w),
+          child: Icon(icon, size: 23.sp, color: AppColors.textSecondary),
+        ),
+        prefixIconConstraints: const BoxConstraints(),
+        suffixIcon: onToggleObscure == null
+            ? null
+            : GestureDetector(
+          onTap: onToggleObscure,
+          child: Padding(
+            padding: EdgeInsetsDirectional.only(start: 10.w, end: 16.w),
+            // Figma بيعرض العين العادية والباسورد مخفي.
+            child: Icon(
+              obscure
+                  ? Icons.visibility_outlined
+                  : Icons.visibility_off_outlined,
+              size: 23.sp,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ),
+        suffixIconConstraints: const BoxConstraints(),
+        contentPadding: EdgeInsetsDirectional.only(
+          end: 16.w,
+          top: 16.h,
+          bottom: 16.h,
+        ),
+        errorStyle: TextStyle(fontSize: 12.sp, color: AppColors.error),
+        border: border(AppColors.border),
+        enabledBorder: border(AppColors.border),
+        disabledBorder: border(AppColors.border),
+        focusedBorder: border(AppColors.primary),
+        errorBorder: border(AppColors.error),
+        focusedErrorBorder: border(AppColors.error),
+      ),
+    );
+  }
+
+  /// خانة واحدة من كود التحقق (52×52).
+  Widget _otpBox(int index) {
+    OutlineInputBorder border(Color color) => OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12.r),
+      borderSide: BorderSide(color: color, width: 0.5),
+    );
+
+    return SizedBox(
+      width: 52.w,
+      height: 52.w,
+      child: TextField(
+        controller: _otpControllers[index],
+        focusNode: _otpFocus[index],
+        textAlign: TextAlign.center,
+        keyboardType: TextInputType.number,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          LengthLimitingTextInputFormatter(1),
+        ],
+        style: TextStyle(
+          fontSize: 14.sp,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textPrimary,
+        ),
+        onChanged: (value) {
+          if (value.isNotEmpty && index < 3) {
+            _otpFocus[index + 1].requestFocus();
+          } else if (value.isEmpty && index > 0) {
+            _otpFocus[index - 1].requestFocus();
+          }
+          setState(() {}); // عشان زرار Verify يتفعّل لما الأربع خانات يتملوا
+        },
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: AppColors.textSecondary.withValues(alpha: 0.2),
+          contentPadding: EdgeInsets.zero,
+          border: border(AppColors.textSecondary),
+          enabledBorder: border(AppColors.textSecondary),
+          focusedBorder: border(AppColors.textPrimary),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildError(String message) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Icons.error_outline, size: 18.sp, color: AppColors.error),
+        SizedBox(width: 8.w),
+        Expanded(
+          child: Text(
+            message,
+            style: TextStyle(fontSize: 13.sp, color: AppColors.error),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _primaryButton({
+    required String label,
+    required VoidCallback? onPressed,
+    bool loading = false,
+  }) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.onPrimary,
+        // أثناء Loading بنخلي اللون زي ما هو، وفي غير كده الزرار باهت.
+        disabledBackgroundColor:
+        loading ? AppColors.primary : AppColors.primary.withValues(alpha: 0.4),
+        disabledForegroundColor: AppColors.onPrimary,
+        minimumSize: Size(double.infinity, 54.h),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+        textStyle: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w600),
+      ),
+      child: loading
+          ? SizedBox(
+        width: 22.r,
+        height: 22.r,
+        child: const CircularProgressIndicator(
+          strokeWidth: 2.5,
+          color: AppColors.onPrimary,
+        ),
+      )
+          : Text(label),
+    );
+  }
+
+  Widget _outlinedButton({
+    required String label,
+    required VoidCallback? onPressed,
+  }) {
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        backgroundColor: AppColors.surface,
+        foregroundColor: AppColors.textPrimary,
+        minimumSize: Size(double.infinity, 54.h),
+        side: const BorderSide(color: AppColors.primary, width: 0.5),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+        textStyle: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w600),
+      ),
+      child: Text(label),
+    );
+  }
+
+  // أيقونة Google من assets/images/google_icon.png. لو الملف لسه مش موجود
+  // بنعرض حرف G بلون الهوية بدالها.
+  Widget _googleButton() {
+    return OutlinedButton(
+      onPressed: _isLoading ? null : _comingSoon,
+      style: OutlinedButton.styleFrom(
+        backgroundColor: AppColors.surface,
+        foregroundColor: AppColors.textPrimary,
+        minimumSize: Size(double.infinity, 54.h),
+        side: const BorderSide(color: AppColors.primary, width: 0.5),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+        textStyle: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w600),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Image.asset(
+            'assets/images/google_icon.png',
+            width: 23.sp,
+            height: 23.sp,
+            errorBuilder: (_, __, ___) => Text(
+              'G',
+              style: TextStyle(
+                fontSize: 22.sp,
+                fontWeight: FontWeight.w800,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+          SizedBox(width: 10.w),
+          const Text('Continue with Google'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDivider() {
+    final line = Expanded(
+      child: Container(height: 1, color: AppColors.border),
+    );
+    return Row(
+      children: [
+        line,
+        SizedBox(width: 12.w),
+        Text(
+          'or continue with',
+          style: TextStyle(fontSize: 12.sp, color: AppColors.textSecondary),
+        ),
+        SizedBox(width: 12.w),
+        line,
+      ],
+    );
+  }
+
+  Widget _buildFooter({
+    required String text,
+    required String action,
+    required VoidCallback onTap,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        SizedBox(width: 6.w),
+        GestureDetector(
+          onTap: onTap,
+          child: Text(
+            action,
+            style: TextStyle(
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w600,
+              color: AppColors.primary,
+            ),
+          ),
+        ),
       ],
     );
   }
