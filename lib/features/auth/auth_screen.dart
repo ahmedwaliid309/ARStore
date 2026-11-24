@@ -1,30 +1,3 @@
-// ══════════════════════════════════════════════════════════
-//  الشاشة    : Login / Register (تسجيل الدخول)
-//  المسؤول   : سارة
-//  الـ Branch  : feature/auth
-//  الملف     : lib/features/auth/auth_screen.dart
-// ══════════════════════════════════════════════════════════
-//  المطلوب:
-//    - تبويبين: تسجيل دخول وحساب جديد
-//    - فورم مع تحقق (إيميل وباسورد)
-//    - AuthProvider.signIn و register (وهمي دلوقتي، Firebase لاحقاً)
-//    - نجاح ← Home، مع حالة تحميل ورسالة خطأ
-//
-//  قواعد: شغلك جوه فولدر الشاشة بس. ممنوع تعدّل في core/ أو main.dart أو
-//  pubspec.yaml (وليد بس). الألوان من AppColors، والأحجام بـ .w .h .r .sp،
-//  والتنقل من AppRoutes. الطلبات في initState (مش build).
-// ══════════════════════════════════════════════════════════
-// ══════════════════════════════════════════════════════════
-//  الشاشة    : Authentication (Login / Register / Reset password)
-//  المسؤول   : سارة
-//  الـ Branch  : feature/auth
-//  الملف     : lib/features/auth/auth_screen.dart
-// ══════════════════════════════════════════════════════════
-//  فريمات Figma الخمسة جوه شاشة واحدة (من غير Routes جديدة):
-//    login ← register ← forgotEmail ← otp ← newPassword
-//  - Login و Register متربطين بـ AuthProvider.signIn و register.
-//  - خطوات Reset password UI بس دلوقتي.
-// ══════════════════════════════════════════════════════════
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
