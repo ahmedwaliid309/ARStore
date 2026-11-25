@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// دوال مشتركة للسعر والتاريخ واللون. استخدموها بدل ما كل شاشة تكتب نسختها.
-///   Formatters.price(12500)   // 12,500 ج.م
+///   Formatters.price(12500)   // 12,500 EGP
 ///   Formatters.date(order.createdAt)
 ///   '#2F5D50'.toColor()       // لتحويل ألوان Product.colors
 class Formatters {
@@ -14,7 +14,7 @@ class Formatters {
       if (i > 0 && (digits.length - i) % 3 == 0) buf.write(',');
       buf.write(digits[i]);
     }
-    return '$buf ج.م';
+    return '$buf EGP ';
   }
 
   static String date(DateTime d) => '${d.day}/${d.month}/${d.year}';
