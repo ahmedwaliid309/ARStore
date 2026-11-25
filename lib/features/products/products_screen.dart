@@ -91,7 +91,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontFamily: AppTheme.fontFamily,
-                        fontSize: 20.sp,
+                        fontSize: 24.sp,
                         fontWeight: FontWeight.w700,
                         color: AppColors.primary,
                       ),
@@ -296,29 +296,19 @@ class _ProductsScreenState extends State<ProductsScreen> {
                         itemBuilder: (context, index) {
                           final product = products[index];
 
-                          return Container(
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(12.r),
-                            ),
-                            clipBehavior: Clip.antiAlias,
-                            child: Padding(
-                              padding: EdgeInsets.all(7.w),
-                              child: ProductCard(
-                                product: product,
-                                isFavorite: favoritesProvider.isFavorite(product.id),
+                          return ProductCard(
+                            product: product,
+                            isFavorite: favoritesProvider.isFavorite(product.id),
 
-                                onTap: () {
-                                  context.push(
-                                    AppRoutes.productPath(product.id),
-                                  );
-                                },
+                            onTap: () {
+                              context.push(
+                                AppRoutes.productPath(product.id),
+                              );
+                            },
 
-                                onFavoriteTap: () {
-                                  context.read<FavoritesProvider>().toggle(product);
-                                },
-                              ),
-                            ),
+                            onFavoriteTap: () {
+                              context.read<FavoritesProvider>().toggle(product);
+                            },
                           );
                         },
                       ),

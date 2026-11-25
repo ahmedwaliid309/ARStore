@@ -116,6 +116,7 @@ class AppTheme {
           final selected = states.contains(WidgetState.selected);
           return IconThemeData(
             color: selected ? AppColors.primary : AppColors.textSecondary,
+            size: 24.sp
           );
         }),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
@@ -127,6 +128,7 @@ class AppTheme {
             color: selected ? AppColors.primary : AppColors.textSecondary,
           );
         }),
+
       ),
     );
   }
