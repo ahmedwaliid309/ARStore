@@ -52,10 +52,15 @@ class ProductCard extends StatelessWidget {
                         color: AppColors.surface.withValues(alpha: 0.9),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(
-                        isFavorite ? Icons.favorite : Icons.favorite_border,
-                        size: 18.sp,
-                        color: AppColors.primary,
+                      child: IconButton(
+                        onPressed: onFavoriteTap,
+                        icon: Icon(
+                          isFavorite ? Icons.favorite : Icons.favorite_border,
+                          size: 18.sp,
+                          color: isFavorite
+                              ? AppColors.error
+                              : AppColors.textSecondary,
+                        ),
                       ),
                     ),
                   ),
