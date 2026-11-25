@@ -43,6 +43,9 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   bool loadingState = true;
   String? _error;
   bool isEmpty = false;
+  bool isFavorite = false;
+  int counter = 1;
+  int selectedColorIndex = 0;
 
   Future<void> _loadProduct()async{
     loadingState = true;
@@ -139,7 +142,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                             fixedSize: Size(40.w, 40.w),
                                             padding: EdgeInsets.zero,
                                           ),
-                                          onPressed: (){},
+                                          onPressed: () => context.go(AppRoutes.home),
                                           icon: Icon(Icons.arrow_back_ios_new_rounded, size: 23.34.w,)
                                       ),
                                       Row(
@@ -151,8 +154,14 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                                 fixedSize: Size(40.w, 40.w),
                                                 padding: EdgeInsets.zero,
                                               ),
-                                              onPressed: (){},
-                                              icon: Icon(Icons.favorite_border_outlined, size: 23.34.w,)
+                                              onPressed: (){
+                                                setState(() {
+                                                  isFavorite = !isFavorite;
+                                                });
+                                              },
+                                              icon: Icon( isFavorite ? Icons.favorite : Icons.favorite_border_outlined,
+                                                size: 23.34.w,
+                                                color: isFavorite ? AppColors.error : AppColors.textPrimary,)
                                           ),
                                           SizedBox(width: 8.w,),
                                           IconButton(
@@ -353,64 +362,102 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                   ),
                                   Row(
                                     spacing: 12.w,
-                                    children: [
-                                      Container(
-                                        width: 28.w,
-                                        height: 28.h,
-                                        clipBehavior: Clip.antiAlias,
-                                        decoration: BoxDecoration(
-                                          color: Color(
-                                            int.parse(_product!.colors[0].replaceFirst('#', '0xFF')),
-                                          ),
-                                          borderRadius: BorderRadius.circular(14.r),
-                                          border: Border.all(color: AppColors.background, width: 2.71.w),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: AppColors.textPrimary,
-                                              spreadRadius: 1.5.r,
-                                              blurRadius: 0,
-                                              offset: Offset(0, 0),
+                                    children: List.generate(
+                                        _product!.colors.length,
+                                        (index){
+                                          final color = Color(
+                                            int.parse(
+                                              _product!.colors[index].replaceFirst('#', '0xFF'),
                                             ),
-                                          ],
-                                        ),
-                                      ),
-                                      Container(
-                                        width: 28.w,
-                                        height: 28.h,
-                                        clipBehavior: Clip.antiAlias,
-                                        decoration: BoxDecoration(
-                                          color: Color(
-                                            int.parse(_product!.colors[1].replaceFirst('#', '0xFF')),
-                                          ),
-                                          borderRadius: BorderRadius.circular(14.r),
-                                          border: Border.all(color: AppColors.background, width: 2.71.w),
-                                        ),
-                                      ),
-                                      Container(
-                                        width: 28.w,
-                                        height: 28.h,
-                                        clipBehavior: Clip.antiAlias,
-                                        decoration: BoxDecoration(
-                                          color: Color(
-                                            int.parse(_product!.colors[2].replaceFirst('#', '0xFF')),
-                                          ),
-                                          borderRadius: BorderRadius.circular(14.r),
-                                          border: Border.all(color: AppColors.background, width: 2.71.w),
-                                        ),
-                                      ),
-                                      Container(
-                                        width: 28.w,
-                                        height: 28.h,
-                                        clipBehavior: Clip.antiAlias,
-                                        decoration: BoxDecoration(
-                                          color: Color(
-                                            int.parse(_product!.colors[0].replaceFirst('#', '0xFF')),
-                                          ),
-                                          borderRadius: BorderRadius.circular(14.r),
-                                          border: Border.all(color: AppColors.background, width: 2.71.w),
-                                        ),
-                                      ),
-                                    ],
+                                          );
+                                          final isSelected = selectedColorIndex == index;
+                                          return GestureDetector(
+                                            onTap: (){
+                                              setState(() {
+                                                selectedColorIndex = index;
+                                              });
+                                            },
+                                            child: Container(
+                                              width: 28.w,
+                                              height: 28.h,
+                                              clipBehavior: Clip.antiAlias,
+                                              decoration: BoxDecoration(
+                                                color: color,
+                                                borderRadius: BorderRadius.circular(14.r),
+                                                border: Border.all(color: AppColors.background, width: 2.71.w),
+                                                boxShadow: isSelected
+                                                  ? [
+                                                    BoxShadow(
+                                                      color: AppColors.textPrimary,
+                                                      spreadRadius: 1.5.r,
+                                                      blurRadius: 0,
+                                                      offset: Offset.zero,
+                                                    ),
+                                                    ]
+                                                  : [],
+                                              ),
+                                            )
+                                          );
+                                        }
+                                    ),
+                                      
+                                      // Container(
+                                      //   width: 28.w,
+                                      //   height: 28.h,
+                                      //   clipBehavior: Clip.antiAlias,
+                                      //   decoration: BoxDecoration(
+                                      //     color: Color(
+                                      //       int.parse(_product!.colors[0].replaceFirst('#', '0xFF')),
+                                      //     ),
+                                      //     borderRadius: BorderRadius.circular(14.r),
+                                      //     border: Border.all(color: AppColors.background, width: 2.71.w),
+                                      //     boxShadow: [
+                                      //       BoxShadow(
+                                      //         color: AppColors.textPrimary,
+                                      //         spreadRadius: 1.5.r,
+                                      //         blurRadius: 0,
+                                      //         offset: Offset(0, 0),
+                                      //       ),
+                                      //     ],
+                                      //   ),
+                                      // ),
+                                      // Container(
+                                      //   width: 28.w,
+                                      //   height: 28.h,
+                                      //   clipBehavior: Clip.antiAlias,
+                                      //   decoration: BoxDecoration(
+                                      //     color: Color(
+                                      //       int.parse(_product!.colors[1].replaceFirst('#', '0xFF')),
+                                      //     ),
+                                      //     borderRadius: BorderRadius.circular(14.r),
+                                      //     border: Border.all(color: AppColors.background, width: 2.71.w),
+                                      //   ),
+                                      // ),
+                                      // Container(
+                                      //   width: 28.w,
+                                      //   height: 28.h,
+                                      //   clipBehavior: Clip.antiAlias,
+                                      //   decoration: BoxDecoration(
+                                      //     color: Color(
+                                      //       int.parse(_product!.colors[2].replaceFirst('#', '0xFF')),
+                                      //     ),
+                                      //     borderRadius: BorderRadius.circular(14.r),
+                                      //     border: Border.all(color: AppColors.background, width: 2.71.w),
+                                      //   ),
+                                      // ),
+                                      // Container(
+                                      //   width: 28.w,
+                                      //   height: 28.h,
+                                      //   clipBehavior: Clip.antiAlias,
+                                      //   decoration: BoxDecoration(
+                                      //     color: Color(
+                                      //       int.parse(_product!.colors[0].replaceFirst('#', '0xFF')),
+                                      //     ),
+                                      //     borderRadius: BorderRadius.circular(14.r),
+                                      //     border: Border.all(color: AppColors.background, width: 2.71.w),
+                                      //   ),
+                                      // ),
+                                    
                                   ),
                                 ],
                               ),
@@ -675,7 +722,13 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                               side: BorderSide(color: AppColors.border, width: 0.8.w),
                                               padding: EdgeInsets.all(2.w),
                                             ),
-                                            onPressed: (){},
+                                            onPressed: (){
+                                              setState(() {
+                                                if(counter>1){
+                                                  counter--;
+                                                }
+                                              });
+                                            },
                                             icon: Transform.translate(
                                                 offset: Offset(0, -7.h),
                                                 child: Icon(Icons.minimize_rounded,size: 23.34,color: AppColors.textPrimary,)
@@ -683,7 +736,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                         ),
                                       ),
                                       Text(
-                                        '1',
+                                        counter.toString(),
                                         textAlign: TextAlign.center,
                                         style: TextStyle(
                                           color: AppColors.textPrimary,
@@ -700,7 +753,11 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                               backgroundColor: AppColors.primary,
                                               padding: EdgeInsets.all(2.w),
                                             ),
-                                            onPressed: (){},
+                                            onPressed: (){
+                                              setState(() {
+                                                counter++;
+                                              });
+                                            },
                                             icon:  Icon(Icons.add,size: 23.34,color: AppColors.surface,)
                                         ),
                                       ),
@@ -708,60 +765,6 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                   )
                                 ],
                               ),
-                              // Row(
-                              //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              //   spacing: 10,
-                              //   children: [
-                              //     Column(
-                              //       crossAxisAlignment: CrossAxisAlignment.start,
-                              //       spacing: 4.h,
-                              //       children: [
-                              //         Text(
-                              //           'Total price',
-                              //           style: TextStyle(
-                              //             color: AppColors.textSecondary,
-                              //             fontSize: 12,
-                              //             fontFamily: 'Inter',
-                              //             fontWeight: FontWeight.w400,
-                              //           ),
-                              //         ),
-                              //         Text(
-                              //           'EGP 18,500',
-                              //           style: TextStyle(
-                              //             color: AppColors.primary,
-                              //             fontSize: 24,
-                              //             fontFamily: 'Inter',
-                              //             fontWeight: FontWeight.w600,
-                              //           ),
-                              //         )
-                              //       ],
-                              //     ),
-                              //     SizedBox(
-                              //       width: 179.34.w,
-                              //       height: 54.h,
-                              //       child: ElevatedButton(
-                              //           onPressed: (){},
-                              //           child: Row(
-                              //             spacing: 10,
-                              //             children: [
-                              //               Icon(Icons.shopping_cart_outlined, size: 23.34.w,),
-                              //               Text(
-                              //                 'Add to cart',
-                              //                 textAlign: TextAlign.center,
-                              //                 style: TextStyle(
-                              //                   color: AppColors.surface,
-                              //                   fontSize: 18,
-                              //                   fontFamily: 'Inter',
-                              //                   fontWeight: FontWeight.w600,
-                              //                 ),
-                              //               ),
-                              //             ],
-                              //           )
-                              //       ),
-                              //     ),
-                              //
-                              //   ],
-                              // ),
                             ],
                           ),
                         ),
@@ -795,7 +798,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                         ),
                                       ),
                                       Text(
-                                        '${_product!.price}',
+                                        '${_product!.price * counter}',
                                         style: TextStyle(
                                           color: AppColors.primary,
                                           fontSize: 24,
@@ -845,17 +848,3 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     );
   }
 }
-
-
-/*actions: [
-        ElevatedButton(
-          onPressed: () => context.push(AppRoutes.arPath(widget.productId)),
-          child: const Text('AR (مؤجل)'),
-        ),
-        const SizedBox(height: 12),
-        ElevatedButton(
-          onPressed: () => context.go(AppRoutes.cart),
-          child: const Text('السلة'),
-        ),
-        const SizedBox(height: 12),
-      ], */
