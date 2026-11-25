@@ -134,7 +134,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         value: isDarkMode,
                                         activeTrackColor: AppColors.primary,
                                         inactiveThumbColor: Colors.white,
-                                        inactiveTrackColor: AppColors.background,
+                                        inactiveTrackColor: Color(0xFFE0D8C8),
                                         trackOutlineColor: WidgetStateProperty.all(
                                           Colors.transparent,
                                         ),
@@ -320,7 +320,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         value: saveAR,
                                         activeTrackColor: AppColors.primary,
                                         inactiveThumbColor: Colors.white,
-                                        inactiveTrackColor: AppColors.background,
+                                        inactiveTrackColor: Color(0xFFE0D8C8),
                                         trackOutlineColor: WidgetStateProperty.all(
                                           Colors.transparent,
                                         ),
@@ -449,7 +449,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         value: isNotificationsEnabled,
                                         activeTrackColor: AppColors.primary,
                                         inactiveThumbColor: Colors.white,
-                                        inactiveTrackColor: AppColors.background,
+                                        inactiveTrackColor: Color(0xFFE0D8C8),
                                         trackOutlineColor: WidgetStateProperty.all(
                                           Colors.transparent,
                                         ),
