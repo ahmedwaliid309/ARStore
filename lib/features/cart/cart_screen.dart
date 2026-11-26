@@ -7,7 +7,6 @@ import 'package:provider/provider.dart';
 import 'package:decora/core/router/app_router.dart';
 import 'package:decora/core/theme/app_colors.dart';
 import 'package:decora/core/widgets/state_views.dart';
-import 'package:decora/data/mock_products.dart';
 import 'package:decora/data/models/product.dart';
 import 'package:decora/providers/cart_provider.dart';
 
@@ -41,14 +40,6 @@ class _CartScreenState extends State<CartScreen> {
   void initState() {
     super.initState();
     _load();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final cart = context.read<CartProvider>();
-      if (cart.isEmpty) {
-        for (final p in MockProducts.all.take(3)) {
-          cart.add(p);
-        }
-      }
-    });
   }
 
   Future<void> _load() async {
