@@ -5,7 +5,7 @@
 //  الملف     : lib/features/product_details/product_details_screen.dart
 // ══════════════════════════════════════════════════════════
 //  المطلوب:
-//    - جلب المنتج بـ ProductRepository.byId(productId) في initState، مع تحميل وخطأ
+//    - جلب المنتج بـ ProductRepository.byId(productId) في initState،ميل وخطأ
 //    - معرض صور (PageView) واسم وسعر ووصف
 //    - الأبعاد والألوان المتاحة
 //    - زر "شوف في أوضتك (AR)" ← AppRoutes.arPath (الـ AR مؤجل: اعرض رسالة "قريباً")
@@ -25,8 +25,10 @@ import 'package:intl/message_format.dart';
 import 'package:go_router/go_router.dart';
 import 'package:decora/core/router/app_router.dart';
 import 'package:decora/core/widgets/placeholder_screen.dart';
+import 'package:provider/provider.dart';
 
 import '../../data/models/product.dart';
+import '../../providers/cart_provider.dart';
 
 class ProductDetailsScreen extends StatefulWidget {
   const ProductDetailsScreen({super.key, required this.productId});
@@ -92,8 +94,8 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           : isEmpty
             ? EmptyView(title: 'Product Not Found',
                 subtitle: 'This product is currently unavailable.',
-                actionLabel: 'Back to Home',
-                onAction: () => context.go(AppRoutes.home)
+                actionLabel: 'Back',
+                onAction: () => context.pop(),
             )
             : SafeArea(
         child: Column(
@@ -428,99 +430,101 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                   Text(
                                     'Size',
                                     style: TextStyle(
-                                      color: const Color(0xFF12211D) /* dark-text */,
+                                      color: AppColors.textPrimary,
                                       fontSize: 14,
                                       fontFamily: 'Inter',
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
                                   SizedBox(height: 16.h,),
-                                  Row(
-                                    crossAxisAlignment: CrossAxisAlignment.center,
-                                    mainAxisAlignment: MainAxisAlignment.start,
-                                    spacing: 10.w,
-                                    children: [
-                                      GestureDetector(
-                                        child: Container(
-                                            width: 142.w,
-                                            height: 36.h,
-                                            padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
-                                            decoration: BoxDecoration(
-                                              color: selectedSize == '2-seater'
-                                                  ? AppColors.primary
-                                                  : AppColors.surface,
-                                              borderRadius: BorderRadius.circular(20.r),
-                                              border: selectedSize == '2-seater'
-                                                  ? Border.fromBorderSide(BorderSide.none)
-                                                  : Border.all(
-                                                color: AppColors.border,
-                                                width: 1.w,
-                                              ),
-                                            ),
-                                            child: Center(
-                                              child: Text(
-                                                '2-seater · 160 cm',
-                                                textAlign: TextAlign.center,
-                                                style: TextStyle(
-                                                  color: selectedSize == '2-seater'
-                                                      ? AppColors.surface
-                                                      : AppColors.textPrimary,
-                                                  fontSize: 12,
-                                                  fontFamily: 'Inter',
-                                                  fontWeight: FontWeight.w400,
+                                  SizedBox(
+                                    child: _product!.category == 'كنب'
+                                        ?Row(
+                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                      mainAxisAlignment: MainAxisAlignment.start,
+                                      spacing: 10.w,
+                                      children: [
+                                        GestureDetector(
+                                          child: Container(
+                                              width: 142.w,
+                                              height: 36.h,
+                                              padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
+                                              decoration: BoxDecoration(
+                                                color: selectedSize == '2-seater'
+                                                    ? AppColors.primary
+                                                    : AppColors.surface,
+                                                borderRadius: BorderRadius.circular(20.r),
+                                                border: selectedSize == '2-seater'
+                                                    ? Border.fromBorderSide(BorderSide.none)
+                                                    : Border.all(
+                                                  color: AppColors.border,
+                                                  width: 1.w,
                                                 ),
                                               ),
-                                            )
+                                              child: Center(
+                                                child: Text(
+                                                  '2-seater · 160 cm',
+                                                  textAlign: TextAlign.center,
+                                                  style: TextStyle(
+                                                    color: selectedSize == '2-seater'
+                                                        ? AppColors.surface
+                                                        : AppColors.textPrimary,
+                                                    fontSize: 12,
+                                                    fontFamily: 'Inter',
+                                                    fontWeight: FontWeight.w400,
+                                                  ),
+                                                ),
+                                              )
+                                          ),
+                                          onTap: (){
+                                            setState(() {
+                                              selectedSize = '2-seater';
+                                            });
+                                          },
                                         ),
-                                        onTap: (){
-                                          setState(() {
-                                            selectedSize = '2-seater';
-                                          });
-                                        },
-                                      ),
-
-                                      GestureDetector(
-                                        child: Container(
-                                            width: 142.w,
-                                            height: 36.h,
-                                            padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
-                                            decoration: BoxDecoration(
-                                              color: selectedSize == '3-seater'
-                                                  ? AppColors.primary
-                                                  : AppColors.surface,
-                                              borderRadius: BorderRadius.circular(20.r),
-                                              border: selectedSize == '3-seater'
-                                                  ? Border.fromBorderSide(BorderSide.none)
-                                                  : Border.all(
-                                                color: AppColors.border,
-                                                width: 1.w,
-                                              ),
-                                            ),
-                                            child: Center(
-                                              child: Text(
-                                                '3-seater · 210 cm',
-                                                textAlign: TextAlign.center,
-                                                style: TextStyle(
-                                                  color: selectedSize == '3-seater'
-                                                      ? AppColors.surface
-                                                      : AppColors.textPrimary,
-                                                  fontSize: 12,
-                                                  fontFamily: 'Inter',
-                                                  fontWeight: FontWeight.w400,
+                                        GestureDetector(
+                                          child: Container(
+                                              width: 142.w,
+                                              height: 36.h,
+                                              padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
+                                              decoration: BoxDecoration(
+                                                color: selectedSize == '3-seater'
+                                                    ? AppColors.primary
+                                                    : AppColors.surface,
+                                                borderRadius: BorderRadius.circular(20.r),
+                                                border: selectedSize == '3-seater'
+                                                    ? Border.fromBorderSide(BorderSide.none)
+                                                    : Border.all(
+                                                  color: AppColors.border,
+                                                  width: 1.w,
                                                 ),
                                               ),
-                                            )
+                                              child: Center(
+                                                child: Text(
+                                                  '3-seater · 210 cm',
+                                                  textAlign: TextAlign.center,
+                                                  style: TextStyle(
+                                                    color: selectedSize == '3-seater'
+                                                        ? AppColors.surface
+                                                        : AppColors.textPrimary,
+                                                    fontSize: 12,
+                                                    fontFamily: 'Inter',
+                                                    fontWeight: FontWeight.w400,
+                                                  ),
+                                                ),
+                                              )
+                                          ),
+                                          onTap: (){
+                                            setState(() {
+                                              selectedSize = '3-seater';
+                                            });
+                                          },
                                         ),
-                                        onTap: (){
-                                          setState(() {
-                                            selectedSize = '3-seater';
-                                          });
-                                        },
-                                      ),
-
-                                    ],
+                                        SizedBox(height: 14.h,),
+                                      ],
+                                    )
+                                        :SizedBox(height: 0.h,),
                                   ),
-                                  SizedBox(height: 14.h,),
 
                                   SizedBox(
                                     width: double.infinity.w,
@@ -792,7 +796,13 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                     width: 179.34.w,
                                     height: 54.h,
                                     child: ElevatedButton(
-                                        onPressed: () => context.go(AppRoutes.cart),
+                                        onPressed: () {
+                                          context.read<CartProvider>().add(_product!, quantity: counter);
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('Added to cart')),
+                                          );
+                                        },
+
                                         child: Row(
                                           spacing: 10,
                                           children: [
