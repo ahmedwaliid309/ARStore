@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -9,7 +8,7 @@ import 'package:decora/core/theme/app_colors.dart';
 import 'package:decora/providers/auth_provider.dart';
 
 /// خطوات الشاشة (كل خطوة = فريم في Figma).
-enum _AuthStep { login, register, forgotEmail, otp, newPassword }
+enum _AuthStep { login, register, forgotEmail }
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -28,24 +27,27 @@ class _AuthScreenState extends State<AuthScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
-  final _newPasswordController = TextEditingController();
-  final _newConfirmController = TextEditingController();
-
-  // خانات كود التحقق الأربعة.
-  final List<TextEditingController> _otpControllers =
-  List.generate(4, (_) => TextEditingController());
-  final List<FocusNode> _otpFocus = List.generate(4, (_) => FocusNode());
 
   _AuthStep _step = _AuthStep.login;
   bool _isLoading = false;
   bool _hidePassword = true;
   bool _hideConfirm = true;
-  bool _hideNew = true;
-  bool _hideNewConfirm = true;
   String? _errorMessage;
+  String? _infoMessage;
 
   bool get _isLogin => _step == _AuthStep.login;
-  bool get _otpComplete => _otpControllers.every((c) => c.text.isNotEmpty);
+
+  @override
+  void initState() {
+    super.initState();
+    // لو المستخدم لسه مسجّل (Firebase فاكره) ندخّله على الـ Home بدل ما يسجّل تاني.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (context.read<AuthProvider>().isLoggedIn) {
+        context.go(AppRoutes.home);
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -53,14 +55,6 @@ class _AuthScreenState extends State<AuthScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmController.dispose();
-    _newPasswordController.dispose();
-    _newConfirmController.dispose();
-    for (final c in _otpControllers) {
-      c.dispose();
-    }
-    for (final f in _otpFocus) {
-      f.dispose();
-    }
     super.dispose();
   }
 
@@ -72,20 +66,12 @@ class _AuthScreenState extends State<AuthScreen> {
     FocusScope.of(context).unfocus();
     _passwordController.clear();
     _confirmController.clear();
-    _newPasswordController.clear();
-    _newConfirmController.clear();
-    if (step != _AuthStep.otp) {
-      for (final c in _otpControllers) {
-        c.clear();
-      }
-    }
     setState(() {
       _step = step;
       _errorMessage = null;
+      _infoMessage = null;
       _hidePassword = true;
       _hideConfirm = true;
-      _hideNew = true;
-      _hideNewConfirm = true;
     });
   }
 
@@ -102,11 +88,12 @@ class _AuthScreenState extends State<AuthScreen> {
     final auth = context.read<AuthProvider>();
     bool success = false;
     try {
+      final email = _emailController.text.trim();
       success = _isLogin
-          ? await auth.signIn(_emailController.text, _passwordController.text)
+          ? await auth.signIn(email, _passwordController.text)
           : await auth.register(
-        _nameController.text,
-        _emailController.text,
+        _nameController.text.trim(),
+        email,
         _passwordController.text,
       );
     } catch (_) {
@@ -121,30 +108,41 @@ class _AuthScreenState extends State<AuthScreen> {
     } else {
       setState(() {
         _isLoading = false;
-        _errorMessage = _isLogin
-            ? 'Could not log in. Please check your email and password.'
-            : 'Could not create your account. Please check your details.';
+        _errorMessage = auth.lastError ??
+            (_isLogin
+                ? 'Could not log in. Please check your email and password.'
+                : 'Could not create your account. Please check your details.');
       });
     }
   }
 
-  /// خطوات Reset password: UI بس دلوقتي، بتنقل للخطوة اللي بعدها.
-  void _sendResetLink() {
+  /// Forgot password: بنبعت لينك على الإيميل (Firebase)، من غير OTP.
+  Future<void> _sendResetLink() async {
+    FocusScope.of(context).unfocus();
     if (!_formKeys[_AuthStep.forgotEmail]!.currentState!.validate()) return;
-    _goTo(_AuthStep.otp);
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+      _infoMessage = null;
+    });
+
+    final auth = context.read<AuthProvider>();
+    final ok = await auth.sendPasswordReset(_emailController.text);
+
+    if (!mounted) return;
+    setState(() {
+      _isLoading = false;
+      if (ok) {
+        _infoMessage = 'Reset link sent. Please check your inbox.';
+      } else {
+        _errorMessage =
+            auth.lastError ?? 'Could not send the link. Please try again.';
+      }
+    });
   }
 
-  void _verifyCode() {
-    if (!_otpComplete) return;
-    _goTo(_AuthStep.newPassword);
-  }
-
-  void _savePassword() {
-    if (!_formKeys[_AuthStep.newPassword]!.currentState!.validate()) return;
-    _goTo(_AuthStep.login);
-  }
-
-  /// أزرار لسه مفيش لها Route أو Backend (Google / send again).
+  /// زرار لسه مفيش له Backend (Google).
   void _comingSoon() {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -163,19 +161,21 @@ class _AuthScreenState extends State<AuthScreen> {
     return ok ? null : 'Please enter a valid email';
   }
 
-  String? _validateLoginPassword(String? v) =>
-      (v == null || v.isEmpty) ? 'Please enter your password' : null;
+  /// الباسورد 8 حروف على الأقل (Login و Register و Reset).
+  static const int _minPasswordLength = 8;
+
+  String? _validateLoginPassword(String? v) {
+    if (v == null || v.isEmpty) return 'Please enter your password';
+    return v.length < _minPasswordLength ? 'At least 8 characters' : null;
+  }
 
   String? _validateNewPassword(String? v) {
     if (v == null || v.isEmpty) return 'Please enter a password';
-    return v.length < 8 ? 'At least 8 characters' : null;
+    return v.length < _minPasswordLength ? 'At least 8 characters' : null;
   }
 
   String? _validateConfirm(String? v) =>
       v != _passwordController.text ? 'Passwords do not match' : null;
-
-  String? _validateNewConfirm(String? v) =>
-      v != _newPasswordController.text ? 'Passwords do not match' : null;
 
   // ───────── Build ─────────
 
@@ -206,10 +206,6 @@ class _AuthScreenState extends State<AuthScreen> {
         return _buildRegister();
       case _AuthStep.forgotEmail:
         return _buildForgotEmail();
-      case _AuthStep.otp:
-        return _buildOtp();
-      case _AuthStep.newPassword:
-        return _buildNewPassword();
     }
   }
 
@@ -384,8 +380,20 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
           SizedBox(height: 32.h),
           _emailField(),
+          if (_errorMessage != null) ...[
+            SizedBox(height: 12.h),
+            _buildError(_errorMessage!),
+          ],
+          if (_infoMessage != null) ...[
+            SizedBox(height: 12.h),
+            _buildInfo(_infoMessage!),
+          ],
           SizedBox(height: 24.h),
-          _primaryButton(label: 'Send Reset Link', onPressed: _sendResetLink),
+          _primaryButton(
+            label: 'Send Reset Link',
+            onPressed: _isLoading ? null : _sendResetLink,
+            loading: _isLoading,
+          ),
           SizedBox(height: 18.h),
           Center(
             child: GestureDetector(
@@ -401,89 +409,6 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOtp() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _buildHeader(
-          eyebrow: 'ACCOUNT RECOVERY',
-          title: 'Check your inbox',
-          subtitle: 'Confirmation code sent for your email',
-          subtitleSize: 12,
-        ),
-        SizedBox(height: 54.h),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            for (int i = 0; i < 4; i++) ...[
-              if (i > 0) SizedBox(width: 12.w),
-              _otpBox(i),
-            ],
-          ],
-        ),
-        SizedBox(height: 24.h),
-        // TODO(اللوجيك): العداد ثابت دلوقتي (03:12) لحد ما نربط الكود الحقيقي.
-        Center(
-          child: Text(
-            'Code expires in: 03:12',
-            style: TextStyle(
-              fontSize: 14.sp,
-              height: 17 / 14,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textPrimary,
-            ),
-          ),
-        ),
-        SizedBox(height: 60.h),
-        _primaryButton(
-          label: 'Verify',
-          onPressed: _otpComplete ? _verifyCode : null,
-        ),
-        SizedBox(height: 16.h),
-        _outlinedButton(label: 'send again', onPressed: _comingSoon),
-      ],
-    );
-  }
-
-  Widget _buildNewPassword() {
-    return Form(
-      key: _formKeys[_AuthStep.newPassword],
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildHeader(
-            eyebrow: 'ACCOUNT RECOVERY',
-            title: 'Reset your password',
-            subtitle: 'Please enter your new password',
-          ),
-          SizedBox(height: 32.h),
-          _labeledField(
-            label: 'Password',
-            controller: _newPasswordController,
-            hint: 'At least 8 characters',
-            icon: Icons.lock_outline,
-            validator: _validateNewPassword,
-            obscure: _hideNew,
-            onToggleObscure: () => setState(() => _hideNew = !_hideNew),
-          ),
-          SizedBox(height: 16.h),
-          _labeledField(
-            label: 'Confirm Password',
-            controller: _newConfirmController,
-            hint: 'At least 8 characters',
-            icon: Icons.lock_outline,
-            validator: _validateNewConfirm,
-            obscure: _hideNewConfirm,
-            onToggleObscure: () =>
-                setState(() => _hideNewConfirm = !_hideNewConfirm),
-          ),
-          SizedBox(height: 24.h),
-          _primaryButton(label: 'Done', onPressed: _savePassword),
         ],
       ),
     );
@@ -678,50 +603,6 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  /// خانة واحدة من كود التحقق (52×52).
-  Widget _otpBox(int index) {
-    OutlineInputBorder border(Color color) => OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12.r),
-      borderSide: BorderSide(color: color, width: 0.5),
-    );
-
-    return SizedBox(
-      width: 52.w,
-      height: 52.w,
-      child: TextField(
-        controller: _otpControllers[index],
-        focusNode: _otpFocus[index],
-        textAlign: TextAlign.center,
-        keyboardType: TextInputType.number,
-        inputFormatters: [
-          FilteringTextInputFormatter.digitsOnly,
-          LengthLimitingTextInputFormatter(1),
-        ],
-        style: TextStyle(
-          fontSize: 14.sp,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
-        ),
-        onChanged: (value) {
-          if (value.isNotEmpty && index < 3) {
-            _otpFocus[index + 1].requestFocus();
-          } else if (value.isEmpty && index > 0) {
-            _otpFocus[index - 1].requestFocus();
-          }
-          setState(() {}); // عشان زرار Verify يتفعّل لما الأربع خانات يتملوا
-        },
-        decoration: InputDecoration(
-          filled: true,
-          fillColor: AppColors.textSecondary.withValues(alpha: 0.2),
-          contentPadding: EdgeInsets.zero,
-          border: border(AppColors.textSecondary),
-          enabledBorder: border(AppColors.textSecondary),
-          focusedBorder: border(AppColors.textPrimary),
-        ),
-      ),
-    );
-  }
-
   Widget _buildError(String message) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -732,6 +613,22 @@ class _AuthScreenState extends State<AuthScreen> {
           child: Text(
             message,
             style: TextStyle(fontSize: 13.sp, color: AppColors.error),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfo(String message) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Icons.check_circle_outline, size: 18.sp, color: AppColors.success),
+        SizedBox(width: 8.w),
+        Expanded(
+          child: Text(
+            message,
+            style: TextStyle(fontSize: 13.sp, color: AppColors.success),
           ),
         ),
       ],
@@ -766,24 +663,6 @@ class _AuthScreenState extends State<AuthScreen> {
         ),
       )
           : Text(label),
-    );
-  }
-
-  Widget _outlinedButton({
-    required String label,
-    required VoidCallback? onPressed,
-  }) {
-    return OutlinedButton(
-      onPressed: onPressed,
-      style: OutlinedButton.styleFrom(
-        backgroundColor: AppColors.surface,
-        foregroundColor: AppColors.textPrimary,
-        minimumSize: Size(double.infinity, 54.h),
-        side: const BorderSide(color: AppColors.primary, width: 0.5),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-        textStyle: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w600),
-      ),
-      child: Text(label),
     );
   }
 
