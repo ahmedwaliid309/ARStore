@@ -21,6 +21,9 @@ dependencies:
   shared_preferences: ^2.3.3
   lottie: ^3.1.0
   smooth_page_indicator: ^1.2.1
+  firebase_core: ^5.2.0
+  firebase_auth: ^7.1.0
+  cloud_firestore: ^7.2.0
 
 dev_dependencies:
   flutter_test:
@@ -30,12 +33,14 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
+
   assets:
+    - assets/images/products/
+    - assets/lottie/
     - assets/images/
     - assets/models/
-    - assets/lottie/Decora_Splash.json
 
-  fonts:
+fonts:
     - family: Tajawal
       fonts:
         - asset: assets/fonts/Tajawal-Regular.ttf
