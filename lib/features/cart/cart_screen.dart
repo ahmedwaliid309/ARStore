@@ -8,7 +8,6 @@ import 'package:decora/core/router/app_router.dart';
 import 'package:decora/core/theme/app_colors.dart';
 import 'package:decora/core/utils/formatters.dart';
 import 'package:decora/core/widgets/state_views.dart';
-import 'package:decora/data/mock_products.dart';
 import 'package:decora/data/models/product.dart';
 import 'package:decora/providers/cart_provider.dart';
 
@@ -31,26 +30,8 @@ const Map<String, String> _colorNames = {
   '3E2C1F': 'Espresso',
 };
 
-class CartScreen extends StatefulWidget {
+class CartScreen extends StatelessWidget {
   const CartScreen({super.key});
-
-  @override
-  State<CartScreen> createState() => _CartScreenState();
-}
-
-class _CartScreenState extends State<CartScreen> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final cart = context.read<CartProvider>();
-      if (cart.isEmpty) {
-        for (final p in MockProducts.all.take(3)) {
-          cart.add(p);
-        }
-      }
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
