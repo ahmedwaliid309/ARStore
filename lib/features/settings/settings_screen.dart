@@ -19,8 +19,10 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:decora/core/router/app_router.dart';
 import 'package:decora/core/widgets/placeholder_screen.dart';
+import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../providers/auth_provider.dart';
 
 
 class SettingsScreen extends StatefulWidget {
@@ -532,7 +534,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
 
-                    onPressed: () => context.go(AppRoutes.auth),
+                    onPressed: () {
+                      context.read<AuthProvider>().signOut();
+                      context.go(AppRoutes.auth);
+                    },
+
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.center,
