@@ -14,11 +14,13 @@
 //  والتنقل من AppRoutes. الطلبات في initState (مش build).
 // ══════════════════════════════════════════════════════════
 
-
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:go_router/go_router.dart';
 import 'package:decora/core/router/app_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:decora/core/theme/app_colors.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -29,9 +31,7 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
-
-  late final AnimationController _controller =
-      AnimationController(vsync: this);
+  late final AnimationController _controller = AnimationController(vsync: this);
 
   @override
   void dispose() {
@@ -39,10 +39,25 @@ class _SplashScreenState extends State<SplashScreen>
     super.dispose();
   }
 
+  Future<void> _goNext() async {
+    final prefs = await SharedPreferences.getInstance();
+    final onboardingDone = prefs.getBool('onboardingCompleted') ?? false;
+    final user = await FirebaseAuth.instance.authStateChanges().first;
+    if (!mounted) return;
+
+    if (!onboardingDone) {
+      context.go(AppRoutes.onboarding);
+    } else if (user == null) {
+      context.go(AppRoutes.auth);
+    } else {
+      context.go(AppRoutes.home);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF17453C),
+      backgroundColor: AppColors.primary,
       body: SizedBox.expand(
         child: Lottie.asset(
           'assets/lottie/Decora_Splash.json',
@@ -58,7 +73,7 @@ class _SplashScreenState extends State<SplashScreen>
                 );
 
                 if (mounted) {
-                  context.go(AppRoutes.onboarding);
+                  _goNext();
                 }
               });
           },
@@ -67,4 +82,3 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 }
-
