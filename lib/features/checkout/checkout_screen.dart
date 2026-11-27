@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -536,9 +537,11 @@ class _AddressSheetState extends State<_AddressSheet> {
       (v == null || v.trim().isEmpty) ? 'Please enter $what' : null;
 
   String? _phoneCheck(String? v) {
-    final digits = (v ?? '').replaceAll(RegExp(r'[\s\-+]'), '');
+    final digits = (v ?? '').trim();
     if (digits.isEmpty) return 'Please enter your phone number';
-    if (!RegExp(r'^\d{10,13}$').hasMatch(digits)) return 'Enter a valid phone number';
+    if (!RegExp(r'^\d{11}$').hasMatch(digits)) {
+      return 'Phone number must be 11 digits';
+    }
     return null;
   }
 
@@ -585,7 +588,12 @@ class _AddressSheetState extends State<_AddressSheet> {
                 controller: _phone,
                 keyboardType: TextInputType.phone,
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(labelText: 'Phone'),
+                maxLength: 11,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: const InputDecoration(
+                  labelText: 'Phone',
+                  counterText: '',
+                ),
                 validator: _phoneCheck,
               ),
               SizedBox(height: 12.h),
