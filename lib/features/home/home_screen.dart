@@ -1,10 +1,18 @@
-import 'package:decora/core/theme/app_colors.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
-import '../../core/router/app_router.dart';
-import '../favorites/favorites_screen.dart';
+import 'package:decora/core/router/app_router.dart';
+import 'package:decora/core/theme/app_colors.dart';
+import 'package:decora/core/theme/app_theme.dart';
+import 'package:decora/core/utils/formatters.dart';
+import 'package:decora/data/mock_products.dart';
+import 'package:decora/data/models/product.dart';
+import 'package:decora/features/products/widgets/products_filter_sheet.dart';
+import 'package:decora/providers/auth_provider.dart';
+import 'package:decora/providers/favorites_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -12,2062 +20,639 @@ class HomeScreen extends StatefulWidget {
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
-bool isSelected = false;
-bool isFavorite = false;
-int selectedIndex = 0;
-int index=0;
+
 class _HomeScreenState extends State<HomeScreen> {
+  // التصنيفات اللي فوق (الأول "All" بيفضل في الهوم، الباقي بيفتح Products بالتصنيف)
+  static const _categories = ['All', 'Sofas', 'Beds', 'Tables', 'Chairs', 'Lighting'];
+
+  int selectedIndex = 0;
+
   @override
   Widget build(BuildContext context) {
-    return  Scaffold(
+    final userName = context.watch<AuthProvider>().userName;
+    final favorites = context.watch<FavoritesProvider>();
 
+    // الداتا من MockProducts بدل الكروت الثابتة
+    final featured = MockProducts.all.take(4).toList();
+    final bestSellers = MockProducts.all.skip(4).take(4).toList();
+
+    return Scaffold(
       backgroundColor: AppColors.background,
-      body:
-      SafeArea(
+      body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 12.0 , left: 20.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      children: [
-                        Text(
-                          "GOOD MORNING ", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold,
-                            color: AppColors.primary.withOpacity(.5)
-                        ),),Text(
-                          "Moaz Mansor", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold,
-                            color: AppColors.primary
-                        ),),
-                      ],
-                    ), //Text
-                    Padding(padding:  EdgeInsets.only(right: 20.0),
-                      child: Row(
-                        children: [
-                          Container(
-                            height: 50,
-                            width: 50,
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              shape: BoxShape.circle,
-                            ),
-                            child: GestureDetector(
-                              onTap: () => context.push(AppRoutes.orders),
-                              child: Icon(
-                                Icons.notifications_none_outlined,
-                                color: AppColors.primary,
-                                size: 24,
-                              ),
-                            ),
-                          ),SizedBox(width: 10,),
-
-                          Container(
-                            height: 50,
-                            width: 50,
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              shape: BoxShape.circle,
-                            ),
-                            child: GestureDetector(
-                              onTap: () => context.push(AppRoutes.orders),
-                              child: Icon(
-                                Icons.shopping_cart_outlined,
-                                color: AppColors.primary,
-                                size: 24,
-                              ),
-                            ),
-                          )
-
-                        ],
-                      ) , //notifcation , cart
-                    ), // row icons
-
-                  ],
-                ),
-
-              ),// الجزء بتاع الاسم والايقونات
-              SizedBox(height: 5,),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        decoration: InputDecoration(
-                          hintText: 'Search sofas, beds, lamps...',
-                          prefixIcon: Icon(Icons.search),
-                          filled: true,
-                          fillColor: Colors.white,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    SizedBox(width: 12),
-
-                    GestureDetector(
-
-                      onTap: () {
-                        double maxPrice = 16000;
-                        String selectedCategory = 'All';
-                        Color? selectedColor;
-                        int count = 48; // رقم الى ف اخر زرار ف البوتوم شيت
-
-                        final categories = ['All', 'Sofas', 'Beds', 'Tables', 'Chairs', 'Lighting'];
-                        final colors = [
-                          Color(0xFFDCC8A8),
-                          Color(0xFF6F7F66),
-                          Color(0xFFA0523F),
-                          Color(0xFF222222),
-                          Color(0xFFE8E6E0),
-                        ];
-
-                        showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          backgroundColor: Colors.transparent,
-                          builder: (context) {
-                            return StatefulBuilder(
-                              builder: (context, setSheetState) {
-                                return Container(
-                                  padding: EdgeInsets.fromLTRB(24, 12, 24, 24),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.background,
-                                    borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-                                  ),
-                                  child: SingleChildScrollView(
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Center(
-                                          child: Container(
-                                            width: 40,
-                                            height: 4,
-                                            decoration: BoxDecoration(
-                                              color: Colors.grey,
-                                              borderRadius: BorderRadius.circular(10),
-                                            ),
-                                          ),
-                                        ),
-                                        SizedBox(height: 20),
-
-
-                                        Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Text(
-                                              'Filters',
-                                              style: TextStyle(
-                                                fontSize: 28,
-                                                fontWeight: FontWeight.bold,
-                                                color: AppColors.primary,
-                                              ),
-                                            ),
-                                            IconButton(
-                                              icon: Icon(Icons.close, color: AppColors.primary),
-                                              onPressed: () => Navigator.pop(context),
-                                            ),
-                                          ],
-                                        ), // كلمه فلتر و X
-                                        SizedBox(height: 24),
-
-
-                                        Text('Price range', style: TextStyle(fontSize: 16)),
-                                        Slider(
-                                          value: maxPrice,
-                                          min: 1000,
-                                          max: 16000,
-                                          activeColor: AppColors.primary,
-                                          inactiveColor: Colors.white,
-                                          onChanged: (value) {
-                                            setSheetState(() {
-                                              maxPrice = value;
-                                            });
-                                          },
-                                        ), // الفلوس
-                                        Padding(
-                                          padding: EdgeInsets.symmetric(horizontal: 16),
-                                          child: Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text('1000 .EGP',
-                                                  style: TextStyle(fontSize: 12, color: Colors.grey)),
-                                              Text('${maxPrice.round()} .EGP',
-                                                  style: TextStyle(fontSize: 12, color: Colors.grey)),
-                                            ],
-                                          ),
-                                        ),
-                                        SizedBox(height: 24),
-
-                                        Text('Categories', style: TextStyle(fontSize: 16)),
-                                        SizedBox(height: 16),
-                                        Wrap(
-                                          spacing: 10,
-                                          runSpacing: 10,
-                                          children: categories.map((cat) {
-                                            final isSelected = cat == selectedCategory;
-                                            return GestureDetector(
-                                              onTap: () {
-                                                setSheetState(() {
-                                                  selectedCategory = cat;
-                                                });
-                                              },
-                                              child: Container(
-                                                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                                                decoration: BoxDecoration(
-                                                  color: isSelected ? AppColors.primary : Colors.white,
-                                                  borderRadius: BorderRadius.circular(30),
-                                                ),
-                                                child: Text(
-                                                  cat,
-                                                  style: TextStyle(
-                                                    color: isSelected ? Colors.white : Colors.black87,
-                                                  ),
-                                                ),
-                                              ),
-                                            );
-                                          }).toList(),
-                                        ),
-                                        SizedBox(height: 24),
-
-                                        Text('Available colors', style: TextStyle(fontSize: 16)),
-                                        SizedBox(height: 16),
-                                        Row(
-                                          children: colors.map((c) {
-                                            final isSelected = c == selectedColor;
-                                            return GestureDetector(
-                                              onTap: () {
-                                                setSheetState(() {
-                                                  selectedColor = c;
-                                                });
-                                              },
-                                              child: Container(
-                                                margin: EdgeInsets.only(right: 12),
-                                                padding: EdgeInsets.all(3),
-                                                decoration: BoxDecoration(
-                                                  shape: BoxShape.circle,
-                                                  border: Border.all(
-                                                    color: isSelected ? AppColors.primary : Colors.transparent,
-                                                    width: 2,
-                                                  ),
-                                                ),
-                                                child: Container(
-                                                  width: 30,
-                                                  height: 30,
-                                                  decoration: BoxDecoration(color: c, shape: BoxShape.circle),
-                                                ),
-                                              ),
-                                            );
-                                          }).toList(),
-                                        ),
-                                        SizedBox(height: 32),
-
-
-                                        SizedBox(
-                                          width: double.infinity,
-                                          height: 56,
-                                          child: ElevatedButton(
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: AppColors.primary,
-                                              foregroundColor: Colors.white,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(16),
-                                              ),
-                                            ),
-                                            onPressed: () {
-                                              // نفيجيشن الزرار الاخير
-                                            },
-                                            child: Text(
-                                              'Show $count products',
-                                              style: TextStyle(fontSize: 18),
-                                            ),
-                                          ),
-                                        ), //الزرار الاخير
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            );
-                          },
-                        );
-                      },
-
-                      child: Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Icon(Icons.tune, color: Colors.white),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: 10,),
-
-              Stack(
-                children: [
-
-                  Positioned(
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 8.0, right: 8.0 , bottom: 12.0),
-                        child: Container(
-                                            child: Image.asset('assets/images/banarrr.png'),
-                                          ),
-                      )),
-                  Positioned(
-                      left: 28,
-                      top: 110,
-                      child: GestureDetector(
-                        onTap: () => context.push(AppRoutes.orders),
-                        child: Container(height: 40,width: 130,
-                                          decoration: BoxDecoration(
-                                            color: Colors.red.withOpacity(0),
-                                            borderRadius: BorderRadius.circular(8),
-                                          ),),
-                      ))
-
-                ],
-              ),//  الصوره الكبيره
-
-              SingleChildScrollView( ////1
-                scrollDirection: Axis.horizontal,
-
-                child: Row(
-                  children: [
-
-                    SizedBox(width: 10,),
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          selectedIndex = 0;
-                        });
-                        context.push(AppRoutes.home);
-                      },
-                      child: Container(
-                        height: 45,
-                        width: 70,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: selectedIndex == 0
-                              ? AppColors.primary
-                              : AppColors.surface,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          'All',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: selectedIndex == 0
-                                ? AppColors.surface
-                                : const Color(0xFF333333),
-                          ),
-                        ),
-                      ),
-                    ),
-                    ///////////////////////////////////////////////////////////////////////////222
-                    SizedBox(width: 10,),
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          selectedIndex = 1;
-                        });
-                        context.push(AppRoutes.orderConfirmation);
-                      },
-                      child: Container(
-                        height: 45,
-                        width: 70,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: selectedIndex == 1
-                              ? AppColors.primary
-                              : AppColors.surface,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          'Sofas',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: selectedIndex == 1
-                                ? AppColors.surface
-                                : const Color(0xFF333333),
-                          ),
-                        ),
-                      ),
-                    ),
-                    ///////////////////////////////////////////////////////////////33
-                    SizedBox(width: 10,),
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          selectedIndex = 2;
-                        });
-                        context.push(AppRoutes.orderConfirmation);
-                      },
-                      child: Container(
-                        height: 45,
-                        width: 70,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: selectedIndex == 2
-                              ? AppColors.primary
-                              : AppColors.surface,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          'Beds',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: selectedIndex == 2
-                                ? AppColors.surface
-                                : const Color(0xFF333333),
-                          ),
-                        ),
-                      ),
-                    ),
-                    ////////////////////////////////////////////44
-                    SizedBox(width: 10,),
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          selectedIndex = 3;
-                        });
-                        context.push(AppRoutes.orderConfirmation);
-                      },
-                      child: Container(
-                        height: 45,
-                        width: 70,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: selectedIndex == 3
-                              ? AppColors.primary
-                              : AppColors.surface,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          'Tables',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: selectedIndex == 3
-                                ? AppColors.surface
-                                : const Color(0xFF333333),
-                          ),
-                        ),
-                      ),
-                    ),
-                    //////////////////////////////////////555
-                    SizedBox(width: 10,),
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          selectedIndex = 4;
-                        });
-                        context.push(AppRoutes.orderConfirmation);
-                      },
-                      child: Container(
-                        height: 45,
-                        width: 70,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: selectedIndex == 4
-                              ? AppColors.primary
-                              :AppColors.surface,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          'Chairs',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: selectedIndex == 4
-                                ? AppColors.surface
-                                : const Color(0xFF333333),
-                          ),
-                        ),
-                      ),
-                    ),SizedBox(width: 10,),
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          selectedIndex = 5;
-                        });
-                        context.push(AppRoutes.orderConfirmation);
-                      },
-                      child: Container(
-                        height: 45,
-                        width: 70,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: selectedIndex == 5
-                              ? AppColors.primary
-                              : AppColors.surface,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          'lighting',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: selectedIndex == 5
-                                ? AppColors.surface
-                                : const Color(0xFF333333),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ), // ال 6 زراير بتوع التقليب
-              SizedBox(height: 20,),
-              Padding(
-                padding: const EdgeInsets.only(left: 12.0, right: 12.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        // Handle onTap for 'Featured'
-                      },
-                      child: Text('Featured', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold,color: AppColors.primary)
-                          ,
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () {
-                        // Handle onTap for 'See all'
-                      },
-                      child: Text('See all', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold,color: AppColors.primary.withOpacity(.8)))
-                    )
-                  ],
-                ),
-              ),//see alllll
-
-
-
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    SizedBox(width: 11,),
-                    Container(
-
-                      width: 150,
-                      height: 170,
-                      clipBehavior: Clip.antiAlias,
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Stack(
-                        children: [
-                          Positioned(
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            child: Container(
-                              height: 100,
-                              color: AppColors.border,
-                            ),
-                          ),
-                          Positioned(
-                            top: 20,
-                            left: 20,
-                            right: 20,
-                            child: Image.asset(
-                              'assets/images/Generated Image.png',
-                              height: 70,
-                              fit: BoxFit.contain,
-                            ),
-                          ), // صوره المنتج
-                          Positioned(
-                            right: 4,
-                              top: 3,
-                              child: Container(
-                            height: 30,
-                            width: 30,
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              shape: BoxShape.circle,
-                            ),
-                            child: GestureDetector(
-                              // onTap: () => context.push(AppRoutes.FavoritesScreen),
-                              onTap: () {
-                                setState(() {
-
-
-                                  isFavorite = !isFavorite;
-                                });
-                              },
-                              child: Icon(
-                                isFavorite ? Icons.favorite : Icons.favorite_border_rounded,
-                                color: isFavorite ? Colors.red : AppColors.primary,
-                                size: 24,
-                              ),
-                            ),
-                          )), //القلب
-                          Positioned(
-                            top: 80,
-                              left: 6,
-                              child:
-                          Stack(children: [
-                            GestureDetector(
-                              onTap: () => context.push(AppRoutes.orders),
-                              child:
-                                Container(
-                                  height: 20,
-                                  width: 45,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary,
-                                    borderRadius: BorderRadius.circular(7),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                     Icon(Icons.account_box,size: 16,color: AppColors.surface,),
-                                      SizedBox(width: 5,),
-                                      Text(
-                                        'AR',
-                                        style: TextStyle(
-                                      color: AppColors.surface,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                )
-
-                            ),
-                          ],)), //ar
-                          Positioned(
-                            top: 105,
-                            left: 6,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start, // الإضافة دي
-                              children: [
-                                Text(
-                                  'Nordic Sofa',
-                                  style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Sofas',
-                                  style: TextStyle(
-                                    color: AppColors.primary.withOpacity(0.9),
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'EGP 18,500',
-                                  style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),//الارقام والاسعار
-                        ],
-                      ),
-                    ), SizedBox(width: 10,),
-                    Container(
-                      width: 150,
-                      height: 170,
-                      clipBehavior: Clip.antiAlias,
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Stack(
-                        children: [
-                          Positioned(
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            child: Container(
-                              height: 100,
-                              color: AppColors.border,
-                            ),
-                          ),
-                          Positioned(
-                            top: 20,
-                            left: 20,
-                            right: 20,
-                            child: Image.asset(
-                              'assets/images/Generated Image.png',
-                              height: 70,
-                              fit: BoxFit.contain,
-                            ),
-                          ), // صوره المنتج
-                          Positioned(
-                              right: 4,
-                              top: 3,
-                              child: Container(
-                                height: 30,
-                                width: 30,
-                                decoration: BoxDecoration(
-                                  color: AppColors.surface,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: GestureDetector(
-                                  // onTap: () => context.push(AppRoutes.FavoritesScreen),
-                                  onTap: () {
-                                    setState(() {
-
-
-                                      isFavorite = !isFavorite;
-                                    });
-                                  },
-                                  child: Icon(
-                                    isFavorite ? Icons.favorite : Icons.favorite_border_rounded,
-                                    color: isFavorite ? Colors.red : AppColors.primary,
-                                    size: 24,
-                                  ),
-                                ),
-                              )), //القلب
-                          Positioned(
-                              top: 80,
-                              left: 6,
-                              child:
-                              Stack(children: [
-                                GestureDetector(
-                                    onTap: () => context.push(AppRoutes.orders),
-                                    child:
-                                    Container(
-                                      height: 20,
-                                      width: 45,
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primary,
-                                        borderRadius: BorderRadius.circular(7),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.account_box,size: 16,color: AppColors.surface,),
-                                          SizedBox(width: 5,),
-                                          Text(
-                                            'AR',
-                                            style: TextStyle(
-                                              color: AppColors.surface,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    )
-
-                                ),
-                              ],)), //ar
-                          Positioned(
-                            top: 105,
-                            left: 6,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start, // الإضافة دي
-                              children: [
-                                Text(
-                                  'Nordic Sofa',
-                                  style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Sofas',
-                                  style: TextStyle(
-                                    color: AppColors.primary.withOpacity(0.9),
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'EGP 18,500',
-                                  style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),//الارقام والاسعار
-                        ],
-                      ),
-                    ), SizedBox(width: 10,),
-                    Container(
-                      width: 150,
-                      height: 170,
-                      clipBehavior: Clip.antiAlias,
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Stack(
-                        children: [
-                          Positioned(
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            child: Container(
-                              height: 100,
-                              color: AppColors.border,
-                            ),
-                          ),
-                          Positioned(
-                            top: 20,
-                            left: 20,
-                            right: 20,
-                            child: Image.asset(
-                              'assets/images/Generated Image.png',
-                              height: 70,
-                              fit: BoxFit.contain,
-                            ),
-                          ), // صوره المنتج
-                          Positioned(
-                              right: 4,
-                              top: 3,
-                              child: Container(
-                                height: 30,
-                                width: 30,
-                                decoration: BoxDecoration(
-                                  color: AppColors.surface,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: GestureDetector(
-                                  // onTap: () => context.push(AppRoutes.FavoritesScreen),
-                                  onTap: () {
-                                    setState(() {
-
-
-                                      isFavorite = !isFavorite;
-                                    });
-                                  },
-                                  child: Icon(
-                                    isFavorite ? Icons.favorite : Icons.favorite_border_rounded,
-                                    color: isFavorite ? Colors.red : AppColors.primary,
-                                    size: 24,
-                                  ),
-                                ),
-                              )), //القلب
-                          Positioned(
-                              top: 80,
-                              left: 6,
-                              child:
-                              Stack(children: [
-                                GestureDetector(
-                                    onTap: () => context.push(AppRoutes.orders),
-                                    child:
-                                    Container(
-                                      height: 20,
-                                      width: 45,
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primary,
-                                        borderRadius: BorderRadius.circular(7),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.account_box,size: 16,color: AppColors.surface,),
-                                          SizedBox(width: 5,),
-                                          Text(
-                                            'AR',
-                                            style: TextStyle(
-                                              color: AppColors.surface,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    )
-
-                                ),
-                              ],)), //ar
-                          Positioned(
-                            top: 105,
-                            left: 6,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start, // الإضافة دي
-                              children: [
-                                Text(
-                                  'Nordic Sofa',
-                                  style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Sofas',
-                                  style: TextStyle(
-                                    color: AppColors.primary.withOpacity(0.9),
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'EGP 18,500',
-                                  style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),//الارقام والاسعار
-                        ],
-                      ),
-                    ), SizedBox(width: 10,),
-                    Container(
-                      width: 150,
-                      height: 170,
-                      clipBehavior: Clip.antiAlias,
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Stack(
-                        children: [
-                          Positioned(
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            child: Container(
-                              height: 100,
-                              color: AppColors.border,
-                            ),
-                          ),
-                          Positioned(
-                            top: 20,
-                            left: 20,
-                            right: 20,
-                            child: Image.asset(
-                              'assets/images/Generated Image.png',
-                              height: 70,
-                              fit: BoxFit.contain,
-                            ),
-                          ), // صوره المنتج
-                          Positioned(
-                              right: 4,
-                              top: 3,
-                              child: Container(
-                                height: 30,
-                                width: 30,
-                                decoration: BoxDecoration(
-                                  color: AppColors.surface,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: GestureDetector(
-                                  // onTap: () => context.push(AppRoutes.FavoritesScreen),
-                                  onTap: () {
-                                    setState(() {
-
-
-                                      isFavorite = !isFavorite;
-                                    });
-                                  },
-                                  child: Icon(
-                                    isFavorite ? Icons.favorite : Icons.favorite_border_rounded,
-                                    color: isFavorite ? Colors.red : AppColors.primary,
-                                    size: 24,
-                                  ),
-                                ),
-                              )), //القلب
-                          Positioned(
-                              top: 80,
-                              left: 6,
-                              child:
-                              Stack(children: [
-                                GestureDetector(
-                                    onTap: () => context.push(AppRoutes.orders),
-                                    child:
-                                    Container(
-                                      height: 20,
-                                      width: 45,
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primary,
-                                        borderRadius: BorderRadius.circular(7),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.account_box,size: 16,color: AppColors.surface,),
-                                          SizedBox(width: 5,),
-                                          Text(
-                                            'AR',
-                                            style: TextStyle(
-                                              color: AppColors.surface,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    )
-
-                                ),
-                              ],)), //ar
-                          Positioned(
-                            top: 105,
-                            left: 6,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start, // الإضافة دي
-                              children: [
-                                Text(
-                                  'Nordic Sofa',
-                                  style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Sofas',
-                                  style: TextStyle(
-                                    color: AppColors.primary.withOpacity(0.9),
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'EGP 18,500',
-                                  style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),//الارقام والاسعار
-                        ],
-                      ),
-                    ), SizedBox(width: 10,),
-                    Container(
-                      width: 150,
-                      height: 170,
-                      clipBehavior: Clip.antiAlias,
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Stack(
-                        children: [
-                          Positioned(
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            child: Container(
-                              height: 100,
-                              color: AppColors.border,
-                            ),
-                          ),
-                          Positioned(
-                            top: 20,
-                            left: 20,
-                            right: 20,
-                            child: Image.asset(
-                              'assets/images/Generated Image.png',
-                              height: 70,
-                              fit: BoxFit.contain,
-                            ),
-                          ), // صوره المنتج
-                          Positioned(
-                              right: 4,
-                              top: 3,
-                              child: Container(
-                                height: 30,
-                                width: 30,
-                                decoration: BoxDecoration(
-                                  color: AppColors.surface,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: GestureDetector(
-                                  // onTap: () => context.push(AppRoutes.FavoritesScreen),
-                                  onTap: () {
-                                    setState(() {
-
-
-                                      isFavorite = !isFavorite;
-                                    });
-                                  },
-                                  child: Icon(
-                                    isFavorite ? Icons.favorite : Icons.favorite_border_rounded,
-                                    color: isFavorite ? Colors.red : AppColors.primary,
-                                    size: 24,
-                                  ),
-                                ),
-                              )), //القلب
-                          Positioned(
-                              top: 80,
-                              left: 6,
-                              child:
-                              Stack(children: [
-                                GestureDetector(
-                                    onTap: () => context.push(AppRoutes.orders),
-                                    child:
-                                    Container(
-                                      height: 20,
-                                      width: 45,
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primary,
-                                        borderRadius: BorderRadius.circular(7),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.account_box,size: 16,color: AppColors.surface,),
-                                          SizedBox(width: 5,),
-                                          Text(
-                                            'AR',
-                                            style: TextStyle(
-                                              color: AppColors.surface,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    )
-
-                                ),
-                              ],)), //ar
-                          Positioned(
-                            top: 105,
-                            left: 6,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start, // الإضافة دي
-                              children: [
-                                Text(
-                                  'Nordic Sofa',
-                                  style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Sofas',
-                                  style: TextStyle(
-                                    color: AppColors.primary.withOpacity(0.9),
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'EGP 18,500',
-                                  style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),//الارقام والاسعار
-                        ],
-                      ),
-                    ), SizedBox(width: 10,),
-                  ],
-                ),
-              ),
-              SizedBox(height: 20,),
-              Container(
-                height: 170,
-                margin: const EdgeInsets.only(left: 12,right: 12),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24),
-                  gradient: LinearGradient(
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                    colors: [
-
-                      AppColors.primary,
-                      AppColors.accent,
-                    ],
-                  ),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Row(
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Text(
-                              'CURATED FOR YOU',
-                              style: TextStyle(color: Colors.white54, fontSize: 12),
-                            ),
-                            const SizedBox(height: 10),
-                            const Text(
-                              'Soft modern,\nnaturally yours',
-                              style: TextStyle(color: Colors.white, fontSize: 20),
-                            ),
-                            const SizedBox(height: 16),
-                            GestureDetector(
-                              onTap: () {},
-                              child: const Text(
-                                'Shop the look',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  decoration: TextDecoration.underline,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      flex: 2,
-                      child: Image.asset(
-                        'assets/images/Image (Modern living room).png',
-                        fit: BoxFit.cover,
-                        height: double.infinity,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: 20,),
-              Padding(
-                padding: const EdgeInsets.only(left: 12, right: 12),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        // Handle onTap for 'Featured'
-                      },
-                      child: Text('Best sellers', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold,color: AppColors.primary)
-                        ,
-                      ),
-                    ),
-                    GestureDetector(
-                        onTap: () {
-                          // Handle onTap for 'See all'
-                        },
-                        child: Text('See all', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold,color: AppColors.primary.withOpacity(.8)))
-                    )
-                  ],
-                ),
-              ),//see alllll
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    SizedBox(width: 11,),
-                    Container(
-
-                      width: 150,
-                      height: 170,
-                      clipBehavior: Clip.antiAlias,
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Stack(
-                        children: [
-                          Positioned(
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            child: Container(
-                              height: 100,
-                              color: AppColors.border,
-                            ),
-                          ),
-                          Positioned(
-                            top: 20,
-                            left: 20,
-                            right: 20,
-                            child: Image.asset(
-                              'assets/images/Generated Image.png',
-                              height: 70,
-                              fit: BoxFit.contain,
-                            ),
-                          ), // صوره المنتج
-                          Positioned(
-                              right: 4,
-                              top: 3,
-                              child: Container(
-                                height: 30,
-                                width: 30,
-                                decoration: BoxDecoration(
-                                  color: AppColors.surface,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: GestureDetector(
-                                  // onTap: () => context.push(AppRoutes.FavoritesScreen),
-                                  onTap: () {
-                                    setState(() {
-
-
-                                      isFavorite = !isFavorite;
-                                    });
-                                  },
-                                  child: Icon(
-                                    isFavorite ? Icons.favorite : Icons.favorite_border_rounded,
-                                    color: isFavorite ? Colors.red : AppColors.primary,
-                                    size: 24,
-                                  ),
-                                ),
-                              )), //القلب
-                          Positioned(
-                              top: 80,
-                              left: 6,
-                              child:
-                              Stack(children: [
-                                GestureDetector(
-                                    onTap: () => context.push(AppRoutes.orders),
-                                    child:
-                                    Container(
-                                      height: 20,
-                                      width: 45,
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primary,
-                                        borderRadius: BorderRadius.circular(7),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.account_box,size: 16,color: AppColors.surface,),
-                                          SizedBox(width: 5,),
-                                          Text(
-                                            'AR',
-                                            style: TextStyle(
-                                              color: AppColors.surface,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    )
-
-                                ),
-                              ],)), //ar
-                          Positioned(
-                            top: 105,
-                            left: 6,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start, // الإضافة دي
-                              children: [
-                                Text(
-                                  'Nordic Sofa',
-                                  style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Sofas',
-                                  style: TextStyle(
-                                    color: AppColors.primary.withOpacity(0.9),
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'EGP 18,500',
-                                  style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),//الارقام والاسعار
-                        ],
-                      ),
-                    ), SizedBox(width: 10,),
-                    Container(
-                      width: 150,
-                      height: 170,
-                      clipBehavior: Clip.antiAlias,
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Stack(
-                        children: [
-                          Positioned(
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            child: Container(
-                              height: 100,
-                              color: AppColors.border,
-                            ),
-                          ),
-                          Positioned(
-                            top: 20,
-                            left: 20,
-                            right: 20,
-                            child: Image.asset(
-                              'assets/images/Generated Image.png',
-                              height: 70,
-                              fit: BoxFit.contain,
-                            ),
-                          ), // صوره المنتج
-                          Positioned(
-                              right: 4,
-                              top: 3,
-                              child: Container(
-                                height: 30,
-                                width: 30,
-                                decoration: BoxDecoration(
-                                  color: AppColors.surface,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: GestureDetector(
-                                  // onTap: () => context.push(AppRoutes.FavoritesScreen),
-                                  onTap: () {
-                                    setState(() {
-
-
-                                      isFavorite = !isFavorite;
-                                    });
-                                  },
-                                  child: Icon(
-                                    isFavorite ? Icons.favorite : Icons.favorite_border_rounded,
-                                    color: isFavorite ? Colors.red : AppColors.primary,
-                                    size: 24,
-                                  ),
-                                ),
-                              )), //القلب
-                          Positioned(
-                              top: 80,
-                              left: 6,
-                              child:
-                              Stack(children: [
-                                GestureDetector(
-                                    onTap: () => context.push(AppRoutes.orders),
-                                    child:
-                                    Container(
-                                      height: 20,
-                                      width: 45,
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primary,
-                                        borderRadius: BorderRadius.circular(7),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.account_box,size: 16,color: AppColors.surface,),
-                                          SizedBox(width: 5,),
-                                          Text(
-                                            'AR',
-                                            style: TextStyle(
-                                              color: AppColors.surface,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    )
-
-                                ),
-                              ],)), //ar
-                          Positioned(
-                            top: 105,
-                            left: 6,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start, // الإضافة دي
-                              children: [
-                                Text(
-                                  'Nordic Sofa',
-                                  style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Sofas',
-                                  style: TextStyle(
-                                    color: AppColors.primary.withOpacity(0.9),
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'EGP 18,500',
-                                  style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),//الارقام والاسعار
-                        ],
-                      ),
-                    ), SizedBox(width: 10,),
-                    Container(
-                      width: 150,
-                      height: 170,
-                      clipBehavior: Clip.antiAlias,
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Stack(
-                        children: [
-                          Positioned(
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            child: Container(
-                              height: 100,
-                              color: AppColors.border,
-                            ),
-                          ),
-                          Positioned(
-                            top: 20,
-                            left: 20,
-                            right: 20,
-                            child: Image.asset(
-                              'assets/images/Generated Image.png',
-                              height: 70,
-                              fit: BoxFit.contain,
-                            ),
-                          ), // صوره المنتج
-                          Positioned(
-                              right: 4,
-                              top: 3,
-                              child: Container(
-                                height: 30,
-                                width: 30,
-                                decoration: BoxDecoration(
-                                  color: AppColors.surface,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: GestureDetector(
-                                  // onTap: () => context.push(AppRoutes.FavoritesScreen),
-                                  onTap: () {
-                                    setState(() {
-
-
-                                      isFavorite = !isFavorite;
-                                    });
-                                  },
-                                  child: Icon(
-                                    isFavorite ? Icons.favorite : Icons.favorite_border_rounded,
-                                    color: isFavorite ? Colors.red : AppColors.primary,
-                                    size: 24,
-                                  ),
-                                ),
-                              )), //القلب
-                          Positioned(
-                              top: 80,
-                              left: 6,
-                              child:
-                              Stack(children: [
-                                GestureDetector(
-                                    onTap: () => context.push(AppRoutes.orders),
-                                    child:
-                                    Container(
-                                      height: 20,
-                                      width: 45,
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primary,
-                                        borderRadius: BorderRadius.circular(7),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.account_box,size: 16,color: AppColors.surface,),
-                                          SizedBox(width: 5,),
-                                          Text(
-                                            'AR',
-                                            style: TextStyle(
-                                              color: AppColors.surface,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    )
-
-                                ),
-                              ],)), //ar
-                          Positioned(
-                            top: 105,
-                            left: 6,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start, // الإضافة دي
-                              children: [
-                                Text(
-                                  'Nordic Sofa',
-                                  style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Sofas',
-                                  style: TextStyle(
-                                    color: AppColors.primary.withOpacity(0.9),
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'EGP 18,500',
-                                  style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),//الارقام والاسعار
-                        ],
-                      ),
-                    ), SizedBox(width: 10,),
-                    Container(
-                      width: 150,
-                      height: 170,
-                      clipBehavior: Clip.antiAlias,
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Stack(
-                        children: [
-                          Positioned(
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            child: Container(
-                              height: 100,
-                              color: AppColors.border,
-                            ),
-                          ),
-                          Positioned(
-                            top: 20,
-                            left: 20,
-                            right: 20,
-                            child: Image.asset(
-                              'assets/images/Generated Image.png',
-                              height: 70,
-                              fit: BoxFit.contain,
-                            ),
-                          ), // صوره المنتج
-                          Positioned(
-                              right: 4,
-                              top: 3,
-                              child: Container(
-                                height: 30,
-                                width: 30,
-                                decoration: BoxDecoration(
-                                  color: AppColors.surface,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: GestureDetector(
-                                  // onTap: () => context.push(AppRoutes.FavoritesScreen),
-                                  onTap: () {
-                                    setState(() {
-
-
-                                      isFavorite = !isFavorite;
-                                    });
-                                  },
-                                  child: Icon(
-                                    isFavorite ? Icons.favorite : Icons.favorite_border_rounded,
-                                    color: isFavorite ? Colors.red : AppColors.primary,
-                                    size: 24,
-                                  ),
-                                ),
-                              )), //القلب
-                          Positioned(
-                              top: 80,
-                              left: 6,
-                              child:
-                              Stack(children: [
-                                GestureDetector(
-                                    onTap: () => context.push(AppRoutes.orders),
-                                    child:
-                                    Container(
-                                      height: 20,
-                                      width: 45,
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primary,
-                                        borderRadius: BorderRadius.circular(7),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.account_box,size: 16,color: AppColors.surface,),
-                                          SizedBox(width: 5,),
-                                          Text(
-                                            'AR',
-                                            style: TextStyle(
-                                              color: AppColors.surface,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    )
-
-                                ),
-                              ],)), //ar
-                          Positioned(
-                            top: 105,
-                            left: 6,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start, // الإضافة دي
-                              children: [
-                                Text(
-                                  'Nordic Sofa',
-                                  style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Sofas',
-                                  style: TextStyle(
-                                    color: AppColors.primary.withOpacity(0.9),
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'EGP 18,500',
-                                  style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),//الارقام والاسعار
-                        ],
-                      ),
-                    ), SizedBox(width: 10,),
-                    Container(
-                      width: 150,
-                      height: 170,
-                      clipBehavior: Clip.antiAlias,
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Stack(
-                        children: [
-                          Positioned(
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            child: Container(
-                              height: 100,
-                              color: AppColors.border,
-                            ),
-                          ),
-                          Positioned(
-                            top: 20,
-                            left: 20,
-                            right: 20,
-                            child: Image.asset(
-                              'assets/images/Generated Image.png',
-                              height: 70,
-                              fit: BoxFit.contain,
-                            ),
-                          ), // صوره المنتج
-                          Positioned(
-                              right: 4,
-                              top: 3,
-                              child: Container(
-                                height: 30,
-                                width: 30,
-                                decoration: BoxDecoration(
-                                  color: AppColors.surface,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: GestureDetector(
-                                  // onTap: () => context.push(AppRoutes.FavoritesScreen),
-                                  onTap: () {
-                                    setState(() {
-
-
-                                      isFavorite = !isFavorite;
-                                    });
-                                  },
-                                  child: Icon(
-                                    isFavorite ? Icons.favorite : Icons.favorite_border_rounded,
-                                    color: isFavorite ? Colors.red : AppColors.primary,
-                                    size: 24,
-                                  ),
-                                ),
-                              )), //القلب
-                          Positioned(
-                              top: 80,
-                              left: 6,
-                              child:
-                              Stack(children: [
-                                GestureDetector(
-                                    onTap: () => context.push(AppRoutes.orders),
-                                    child:
-                                    Container(
-                                      height: 20,
-                                      width: 45,
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primary,
-                                        borderRadius: BorderRadius.circular(7),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.account_box,size: 16,color: AppColors.surface,),
-                                          SizedBox(width: 5,),
-                                          Text(
-                                            'AR',
-                                            style: TextStyle(
-                                              color: AppColors.surface,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    )
-
-                                ),
-                              ],)), //ar
-                          Positioned(
-                            top: 105,
-                            left: 6,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start, // الإضافة دي
-                              children: [
-                                Text(
-                                  'Nordic Sofa',
-                                  style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Sofas',
-                                  style: TextStyle(
-                                    color: AppColors.primary.withOpacity(0.9),
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'EGP 18,500',
-                                  style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),//الارقام والاسعار
-                        ],
-                      ),
-                    ), SizedBox(width: 10,),
-                  ],
-                ),
-              ),
-              SizedBox(height: 20,),
-              Padding(
-                padding: const EdgeInsets.only(left: 12, right: 12),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        // Handle onTap for 'Featured'
-                      },
-                      child: Text('Recommended for you', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold,color: Colors.black)
-                        ,
-                      ),
-                    ),
-
-                  ],
-                ),
-              ),//Recommended for you
-
-              Container(
-                margin: const EdgeInsets.all(16),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Column(
-                  children: [
-                    // الكرسى الاخضر
-                    Row(
-                      children: [
-                        Container(
-                          width: 100,
-                          height: 100,
-                          decoration: BoxDecoration(
-                            color: AppColors.border,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Image.asset('assets/images/green chair.png'),
-                        ),
-                        const SizedBox(width: 16),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Complements your style',
-                                style: TextStyle(color: AppColors.success, fontSize: 12),
-                              ),
-                              SizedBox(height: 4),
-                              Text('Noma Lounge Chair', style: TextStyle(fontSize: 18)),
-                              SizedBox(height: 4),
-                              Text(
-                                'EGP 6,900',
-                                style: TextStyle(color: AppColors.success, fontSize: 16),
-                              ),
-                            ],
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () {},
-                          child: const Icon(Icons.chevron_right, size: 30),
-                        ),
-                      ],
-                    ),
-                    const Divider(height: 32),
-
-                    // ===== المنتج التاني =====
-                    Row(
-                      children: [
-                        Container(
-                          width: 100,
-                          height: 100,
-                          decoration: BoxDecoration(
-                            color: AppColors.border,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Image.asset('assets/images/Generated Image.png'),
-                        ),
-                        const SizedBox(width: 16),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Complements your style',
-                                style: TextStyle(color: AppColors.success, fontSize: 12),
-                              ),
-                              SizedBox(height: 4),
-                              Text('Sora Reading Chair', style: TextStyle(fontSize: 18)),
-                              SizedBox(height: 4),
-                              Text(
-                                'EGP 18,500',
-                                style: TextStyle(color: AppColors.success, fontSize: 16),
-                              ),
-                            ],
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () => context.push(AppRoutes.orders),
-                          child: const Icon(Icons.chevron_right, size: 30),
-                        ),
-                      ],
-                    ),
-                    const Divider(height: 32),
-                    //الكرسى الابيض
-
-
-                    Row(
-                      children: [
-                        Container(
-                          width: 100,
-                          height: 100,
-                          decoration: BoxDecoration(
-                            color: AppColors.border,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Image.asset('assets/images/white chair.png'),
-                        ),
-                        const SizedBox(width: 16),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Complements your style',
-                                style: TextStyle(color: AppColors.success, fontSize: 12),
-                              ),
-                              SizedBox(height: 4),
-                              Text('Elara Accent Chair', style: TextStyle(fontSize: 18)),
-                              SizedBox(height: 4),
-                              Text(
-                                'EGP 6,900',
-                                style: TextStyle(color: AppColors.success, fontSize: 16),
-                              ),
-                            ],
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () {},
-                          child: const Icon(Icons.chevron_right, size: 30),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              )
-
-
-
-
-
-
-
-
-
+              _header(userName), // الاسم والايقونات
+              SizedBox(height: 5.h),
+              _searchRow(), // البحث + الفلتر
+              SizedBox(height: 10.h),
+              _banner(), // الصورة الكبيرة
+              _categoryChips(), // زراير التقليب
+              SizedBox(height: 20.h),
+              _sectionHeader('Featured', onSeeAll: () => context.push(AppRoutes.products)),
+              _productsRow(featured, favorites),
+              SizedBox(height: 20.h),
+              _curatedBanner(),
+              SizedBox(height: 20.h),
+              _sectionHeader('Best sellers', onSeeAll: () => context.push(AppRoutes.products)),
+              _productsRow(bestSellers, favorites),
+              SizedBox(height: 20.h),
+              _sectionHeader('Recommended for you'),
+              _recommended(),
             ],
           ),
         ),
-
       ),
+    );
+  }
 
+  // ───────────────────────── Header ─────────────────────────
+  Widget _header(String userName) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'GOOD MORNING',
+                style: TextStyle(
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary.withValues(alpha: .5),
+                ),
+              ),
+              Text(
+                userName.isEmpty ? 'Guest' : userName,
+                style: TextStyle(
+                  fontSize: 24.sp,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+          Row(
+            children: [
+              // الجرس: مفيش شاشة إشعارات في الـ Router لسه
+              _circleIcon(Icons.notifications_none_outlined, () {
+                ScaffoldMessenger.of(context)
+                  ..hideCurrentSnackBar()
+                  ..showSnackBar(
+                    const SnackBar(content: Text('No new notifications')),
+                  );
+              }),
+              SizedBox(width: 10.w),
+              // السلة: تاب السلة
+              _circleIcon(
+                Icons.shopping_cart_outlined,
+                    () => context.go(AppRoutes.cart),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
+  Widget _circleIcon(IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 50.w,
+        width: 50.w,
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: AppColors.primary, size: 24.sp),
+      ),
+    );
+  }
+
+  // ───────────────────────── Search + Filter ─────────────────────────
+  Widget _searchRow() {
+    return Padding(
+      padding: EdgeInsets.all(16.w),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: 'Search sofas, beds, lamps...',
+                prefixIcon: const Icon(Icons.search),
+                filled: true,
+                fillColor: AppColors.surface,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(20.r),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ),
+          SizedBox(width: 12.w),
+          GestureDetector(
+            onTap: _openFilters,
+            child: Container(
+              width: 56.w,
+              height: 56.w,
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(16.r),
+              ),
+              child: Icon(Icons.tune, color: AppColors.surface, size: 24.sp),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // نفس الـ ProductsFilterSheet المستخدم في Products (بدل النسخة المكررة)
+  Future<void> _openFilters() async {
+    final result = await showModalBottomSheet<FilterOptions>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ProductsFilterSheet(
+        productCount: MockProducts.all.length,
+        categories: _categories,
+      ),
+    );
+
+    if (result == null || !mounted) return;
+
+    // لو اختار تصنيف واحد بس نفتح Products بيه، غير كدا نفتح Products كلها
+    final picked = result.categories.where((c) => c != 'All').toList();
+    context.push(
+      AppRoutes.products,
+      extra: picked.length == 1 ? picked.first : null,
+    );
+  }
+
+  // ───────────────────────── Banner ─────────────────────────
+  Widget _banner() {
+    return Padding(
+      padding: EdgeInsets.only(left: 8.w, right: 8.w, bottom: 12.h),
+      child: Stack(
+        children: [
+          Image.asset('assets/images/banarrr.png'),
+          // منطقة ضغط شفافة فوق كلمة "Open AR" في الصورة (بالنسبة لحجم الصورة
+          // عشان تفضل في مكانها على أي شاشة). بتفتح صفحة ar_view
+          Positioned.fill(
+            child: LayoutBuilder(
+              builder: (context, c) => Stack(
+                children: [
+                  Positioned(
+                    left: c.maxWidth * 0.04,
+                    top: c.maxHeight * 0.57,
+                    width: c.maxWidth * 0.34,
+                    height: c.maxHeight * 0.24,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => context.push(
+                        AppRoutes.arPath(MockProducts.all.first.id),
+                      ),
+                      child: const SizedBox.expand(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ───────────────────────── Category chips ─────────────────────────
+  Widget _categoryChips() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: EdgeInsets.symmetric(horizontal: 10.w),
+      child: Row(
+        children: [
+          for (var i = 0; i < _categories.length; i++)
+            Padding(
+              padding: EdgeInsets.only(right: 10.w),
+              child: GestureDetector(
+                onTap: () {
+                  setState(() => selectedIndex = i);
+                  if (i != 0) {
+                    context.push(AppRoutes.products, extra: _categories[i]);
+                  }
+                },
+                child: Container(
+                  height: 45.h,
+                  width: 70.w,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: selectedIndex == i ? AppColors.primary : AppColors.surface,
+                    borderRadius: BorderRadius.circular(20.r),
+                  ),
+                  child: Text(
+                    _categories[i],
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      color: selectedIndex == i
+                          ? AppColors.surface
+                          : AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ───────────────────────── Sections ─────────────────────────
+  Widget _sectionHeader(String title, {VoidCallback? onSeeAll}) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 12.w),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 22.sp,
+              fontWeight: FontWeight.bold,
+              color: AppColors.primary,
+            ),
+          ),
+          if (onSeeAll != null)
+            GestureDetector(
+              onTap: onSeeAll,
+              child: Text(
+                'See all',
+                style: TextStyle(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary.withValues(alpha: .8),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _productsRow(List<Product> products, FavoritesProvider favorites) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: EdgeInsets.fromLTRB(11.w, 10.h, 0, 0),
+      child: Row(
+        children: [
+          for (final p in products)
+            Padding(
+              padding: EdgeInsets.only(right: 10.w),
+              child: SizedBox(
+                width: 160.w,
+                height: 220.h,
+                child: _HomeProductCard(
+                  product: p,
+                  isFavorite: favorites.isFavorite(p.id),
+                  onTap: () => context.push(AppRoutes.productPath(p.id)),
+                  onFavoriteTap: () => context.read<FavoritesProvider>().toggle(p),
+                  onArTap: () => context.push(AppRoutes.arPath(p.id)),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _curatedBanner() {
+    return Container(
+      height: 170.h,
+      margin: EdgeInsets.symmetric(horizontal: 12.w),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24.r),
+        gradient: const LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: [AppColors.primary, AppColors.accent],
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Row(
+        children: [
+          Expanded(
+            flex: 3,
+            child: Padding(
+              padding: EdgeInsets.all(20.w),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'CURATED FOR YOU',
+                    style: TextStyle(
+                      color: AppColors.onPrimary.withValues(alpha: .6),
+                      fontSize: 12.sp,
+                    ),
+                  ),
+                  SizedBox(height: 10.h),
+                  Text(
+                    'Soft modern,\nnaturally yours',
+                    style: TextStyle(color: AppColors.onPrimary, fontSize: 20.sp),
+                  ),
+                  SizedBox(height: 16.h),
+                  GestureDetector(
+                    onTap: () => context.push(AppRoutes.products),
+                    child: Text(
+                      'Shop the look',
+                      style: TextStyle(
+                        color: AppColors.onPrimary,
+                        fontSize: 14.sp,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Image.asset(
+              'assets/images/Image (Modern living room).png',
+              fit: BoxFit.cover,
+              height: double.infinity,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ───────────────────────── Recommended ─────────────────────────
+  Widget _recommended() {
+    return Container(
+      margin: EdgeInsets.all(16.w),
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24.r),
+      ),
+      child: Column(
+        children: [
+          _recommendedTile(
+            id: '4',
+            image: 'assets/images/green chair.png',
+            name: 'Noma Lounge Chair',
+            price: 'EGP 6,900',
+          ),
+          Divider(height: 32.h),
+          _recommendedTile(
+            id: '15',
+            image: 'assets/images/Generated Image.png',
+            name: 'Sora Reading Chair',
+            price: 'EGP 18,500',
+          ),
+          Divider(height: 32.h),
+          _recommendedTile(
+            id: '17',
+            image: 'assets/images/white chair.png',
+            name: 'Elara Accent Chair',
+            price: 'EGP 6,900',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _recommendedTile({
+    required String id,
+    required String image,
+    required String name,
+    required String price,
+  }) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => context.push(AppRoutes.productPath(id)),
+      child: Row(
+        children: [
+          Container(
+            width: 100.w,
+            height: 100.w,
+            decoration: BoxDecoration(
+              color: AppColors.border,
+              borderRadius: BorderRadius.circular(16.r),
+            ),
+            child: Image.asset(image),
+          ),
+          SizedBox(width: 16.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Complements your style',
+                  style: TextStyle(color: AppColors.success, fontSize: 12.sp),
+                ),
+                SizedBox(height: 4.h),
+                Text(name, style: TextStyle(fontSize: 18.sp)),
+                SizedBox(height: 4.h),
+                Text(
+                  price,
+                  style: TextStyle(color: AppColors.success, fontSize: 16.sp),
+                ),
+              ],
+            ),
+          ),
+          Icon(Icons.chevron_right, size: 30.sp),
+        ],
+      ),
+    );
+  }
+}
+
+/// كارت المنتج بتاع الهوم: الصورة فوق زي ما هي، واسم المنتج وسعره على خلفية بيضا،
+/// وبوردر خفيف بيلم الاتنين مع بعض. (خاص بالهوم، ProductCard المشترك متعدلش)
+class _HomeProductCard extends StatelessWidget {
+  const _HomeProductCard({
+    required this.product,
+    required this.isFavorite,
+    this.onTap,
+    this.onFavoriteTap,
+    this.onArTap,
+  });
+
+  final Product product;
+  final bool isFavorite;
+  final VoidCallback? onTap;
+  final VoidCallback? onFavoriteTap;
+  final VoidCallback? onArTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14.r),
+          border: Border.all(color: AppColors.border, width: 1),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // الجزء اللي فوق (الصورة + القلب + AR)
+            Expanded(
+              child: Container(
+                color: AppColors.chip,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    _image(),
+                    PositionedDirectional(
+                      top: 6.h,
+                      end: 6.w,
+                      child: GestureDetector(
+                        onTap: onFavoriteTap,
+                        child: Container(
+                          width: 28.w,
+                          height: 28.w,
+                          decoration: BoxDecoration(
+                            color: AppColors.surface.withValues(alpha: 0.95),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            isFavorite ? Icons.favorite : Icons.favorite_border,
+                            size: 17.sp,
+                            color: isFavorite
+                                ? AppColors.error
+                                : AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ),
+                    // زرار الـ AR: بيفتح صفحة ar_view بتاعة المنتج
+                    PositionedDirectional(
+                      bottom: 6.h,
+                      start: 6.w,
+                      child: GestureDetector(
+                        onTap: onArTap,
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 6.w,
+                            vertical: 3.h,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(10.r),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.view_in_ar,
+                                size: 14.sp,
+                                color: AppColors.onPrimary,
+                              ),
+                              SizedBox(width: 3.w),
+                              Text(
+                                'AR',
+                                style: TextStyle(
+                                  fontFamily: AppTheme.fontFamily,
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.onPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // الجزء اللي تحت (الاسم والسعر) خلفية بيضا
+            Container(
+              width: double.infinity,
+              color: AppColors.surface,
+              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    product.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: AppTheme.fontFamily,
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  SizedBox(height: 2.h),
+                  Text(
+                    product.category,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: AppTheme.fontFamily,
+                      fontSize: 14.sp,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  SizedBox(height: 3.h),
+                  Text(
+                    Formatters.price(product.price),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: AppTheme.fontFamily,
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _image() {
+    final placeholder = Icon(
+      Icons.chair_outlined,
+      size: 40.sp,
+      color: AppColors.textSecondary,
+    );
+
+    if (product.images.isEmpty) return Center(child: placeholder);
+
+    final src = product.images.first;
+
+    if (src.startsWith('http')) {
+      return CachedNetworkImage(
+        imageUrl: src,
+        fit: BoxFit.cover,
+        placeholder: (_, __) => Center(child: placeholder),
+        errorWidget: (_, __, ___) => Center(child: placeholder),
+      );
+    }
+
+    return Image.asset(
+      src,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => Center(child: placeholder),
     );
   }
 }
