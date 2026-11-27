@@ -6,74 +6,39 @@ import 'package:provider/provider.dart';
 
 import 'package:decora/core/router/app_router.dart';
 import 'package:decora/core/theme/app_colors.dart';
+import 'package:decora/core/utils/formatters.dart';
 import 'package:decora/core/widgets/state_views.dart';
-import 'package:decora/data/mock_products.dart';
 import 'package:decora/data/models/product.dart';
 import 'package:decora/providers/cart_provider.dart';
 
-String _egp(double value) {
-  final digits = value.round().toString();
-  final buf = StringBuffer();
-  for (var i = 0; i < digits.length; i++) {
-    if (i > 0 && (digits.length - i) % 3 == 0) buf.write(',');
-    buf.write(digits[i]);
-  }
-  return 'EGP $buf';
-}
+const double kDeliveryFee = 250;
 
-const double _deliveryFee = 250;
+String egpPrice(double value) =>
+    'EGP ${Formatters.price(value).replaceAll('EGP', '').trim()}';
 
-const bool _debugFailLoad = false;
+const Map<String, String> _colorNames = {
+  'C98B5B': 'Caramel',
+  '1F2421': 'Black',
+  'FFFFFF': 'White',
+  '9AA0A6': 'Grey',
+  'C9B79C': 'Beige',
+  '6B4F3A': 'Walnut',
+  '2F5D50': 'Green',
+  '17453C': 'Forest',
+  '8FA396': 'Sage',
+  '527C66': 'Moss',
+  '3E2C1F': 'Espresso',
+};
 
-enum _CartStatus { loading, error, ready }
-
-class CartScreen extends StatefulWidget {
+class CartScreen extends StatelessWidget {
   const CartScreen({super.key});
-
-  @override
-  State<CartScreen> createState() => _CartScreenState();
-}
-
-class _CartScreenState extends State<CartScreen> {
-  _CartStatus _status = _CartStatus.loading;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final cart = context.read<CartProvider>();
-      if (cart.isEmpty) {
-        for (final p in MockProducts.all.take(3)) {
-          cart.add(p);
-        }
-      }
-    });
-  }
-
-  Future<void> _load() async {
-    setState(() => _status = _CartStatus.loading);
-    try {
-      await Future.delayed(const Duration(milliseconds: 300));
-      if (_debugFailLoad) throw Exception('debug load error');
-      if (!mounted) return;
-      setState(() => _status = _CartStatus.ready);
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _status = _CartStatus.error);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     final cart = context.watch<CartProvider>();
 
     Widget body;
-    if (_status == _CartStatus.loading) {
-      body = const LoadingView();
-    } else if (_status == _CartStatus.error) {
-      body = ErrorView(message: "Couldn't load your cart", onRetry: _load);
-    } else if (cart.isEmpty) {
+    if (cart.isEmpty) {
       body = EmptyView(
         icon: Icons.shopping_bag_outlined,
         title: 'Your cart is empty',
@@ -137,7 +102,7 @@ class _CartItemTile extends StatelessWidget {
           color: AppColors.error,
           borderRadius: BorderRadius.circular(20.r),
         ),
-        child: Icon(Icons.delete_outline, color: Colors.white, size: 26.sp),
+        child: Icon(Icons.delete_outline, color: AppColors.surface, size: 26.sp),
       ),
       child: Container(
         padding: EdgeInsets.all(12.r),
@@ -163,18 +128,10 @@ class _CartItemTile extends StatelessWidget {
                     ),
                   ),
                   SizedBox(height: 2.h),
-                  Text(
-                    p.category,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: text.bodySmall?.copyWith(
-                      fontSize: 12.sp,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
+                  _ItemMeta(product: p),
                   SizedBox(height: 6.h),
                   Text(
-                    _egp(p.price),
+                    egpPrice(p.price),
                     style: text.titleMedium?.copyWith(
                       fontSize: 16.sp,
                       fontWeight: FontWeight.w700,
@@ -193,6 +150,50 @@ class _CartItemTile extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ItemMeta extends StatelessWidget {
+  const _ItemMeta({required this.product});
+
+  final Product product;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = product;
+    final colorName = p.colors.isEmpty
+        ? null
+        : _colorNames[p.colors.first.replaceAll('#', '').toUpperCase()];
+    final parts = <String>[
+      if (colorName != null) colorName,
+      if (p.widthCm > 0) '${p.widthCm.round()} cm' else p.category,
+    ];
+    final size = parts.join(' · ');
+
+    return Row(
+      children: [
+        if (p.colors.isNotEmpty) ...[
+          Container(
+            width: 12.w,
+            height: 12.w,
+            decoration: BoxDecoration(
+              color: p.colors.first.toColor(),
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.border),
+            ),
+          ),
+          SizedBox(width: 6.w),
+        ],
+        Expanded(
+          child: Text(
+            size,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 12.sp, color: AppColors.textSecondary),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -379,14 +380,14 @@ class _SummaryCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _Row('Subtotal', _egp(cart.total)),
+          _Row('Subtotal', egpPrice(cart.total)),
           SizedBox(height: 10.h),
-          _Row('Delivery', _egp(_deliveryFee)),
+          _Row('Delivery', egpPrice(kDeliveryFee)),
           Padding(
             padding: EdgeInsets.symmetric(vertical: 12.h),
             child: const Divider(height: 1, color: AppColors.border),
           ),
-          _Row('Total', _egp(cart.total + _deliveryFee), bold: true),
+          _Row('Total', egpPrice(cart.total + kDeliveryFee), bold: true),
         ],
       ),
     );
