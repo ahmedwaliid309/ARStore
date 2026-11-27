@@ -5,7 +5,7 @@
 //  الملف     : lib/features/product_details/product_details_screen.dart
 // ══════════════════════════════════════════════════════════
 //  المطلوب:
-//    - جلب المنتج بـ ProductRepository.byId(productId) في initState، مع تحميل وخطأ
+//    - جلب المنتج بـ ProductRepository.byId(productId) في initState،ميل وخطأ
 //    - معرض صور (PageView) واسم وسعر ووصف
 //    - الأبعاد والألوان المتاحة
 //    - زر "شوف في أوضتك (AR)" ← AppRoutes.arPath (الـ AR مؤجل: اعرض رسالة "قريباً")
@@ -15,17 +15,20 @@
 //  pubspec.yaml (وليد بس). الألوان من AppColors، والأحجام بـ .w .h .r .sp،
 //  والتنقل من AppRoutes. الطلبات في initState (مش build).
 // ══════════════════════════════════════════════════════════
+import 'package:decora/core/utils/formatters.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:decora/core/theme/app_colors.dart';
 import 'package:decora/data/product_repository.dart';
 import 'package:decora/core/widgets/state_views.dart';
-
+import 'package:intl/message_format.dart';
 import 'package:go_router/go_router.dart';
 import 'package:decora/core/router/app_router.dart';
 import 'package:decora/core/widgets/placeholder_screen.dart';
+import 'package:provider/provider.dart';
 
 import '../../data/models/product.dart';
+import '../../providers/cart_provider.dart';
 
 class ProductDetailsScreen extends StatefulWidget {
   const ProductDetailsScreen({super.key, required this.productId});
@@ -43,6 +46,11 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   bool loadingState = true;
   String? _error;
   bool isEmpty = false;
+  bool isFavorite = false;
+  int counter = 1;
+  int selectedColorIndex = 0;
+  bool selected_size = false;
+  String selectedSize = '2-seater';
 
   Future<void> _loadProduct()async{
     loadingState = true;
@@ -86,8 +94,8 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           : isEmpty
             ? EmptyView(title: 'Product Not Found',
                 subtitle: 'This product is currently unavailable.',
-                actionLabel: 'Back to Home',
-                onAction: () => context.go(AppRoutes.home)
+                actionLabel: 'Back',
+                onAction: () => context.pop(),
             )
             : SafeArea(
         child: Column(
@@ -139,7 +147,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                             fixedSize: Size(40.w, 40.w),
                                             padding: EdgeInsets.zero,
                                           ),
-                                          onPressed: (){},
+                                          onPressed: () => context.go(AppRoutes.home),
                                           icon: Icon(Icons.arrow_back_ios_new_rounded, size: 23.34.w,)
                                       ),
                                       Row(
@@ -151,8 +159,14 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                                 fixedSize: Size(40.w, 40.w),
                                                 padding: EdgeInsets.zero,
                                               ),
-                                              onPressed: (){},
-                                              icon: Icon(Icons.favorite_border_outlined, size: 23.34.w,)
+                                              onPressed: (){
+                                                setState(() {
+                                                  isFavorite = !isFavorite;
+                                                });
+                                              },
+                                              icon: Icon( isFavorite ? Icons.favorite : Icons.favorite_border_outlined,
+                                                size: 23.34.w,
+                                                color: isFavorite ? AppColors.error : AppColors.textPrimary,)
                                           ),
                                           SizedBox(width: 8.w,),
                                           IconButton(
@@ -353,64 +367,44 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                   ),
                                   Row(
                                     spacing: 12.w,
-                                    children: [
-                                      Container(
-                                        width: 28.w,
-                                        height: 28.h,
-                                        clipBehavior: Clip.antiAlias,
-                                        decoration: BoxDecoration(
-                                          color: Color(
-                                            int.parse(_product!.colors[0].replaceFirst('#', '0xFF')),
-                                          ),
-                                          borderRadius: BorderRadius.circular(14.r),
-                                          border: Border.all(color: AppColors.background, width: 2.71.w),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: AppColors.textPrimary,
-                                              spreadRadius: 1.5.r,
-                                              blurRadius: 0,
-                                              offset: Offset(0, 0),
+                                    children: List.generate(
+                                        _product!.colors.length,
+                                        (index){
+                                          final color = Color(
+                                            int.parse(
+                                              _product!.colors[index].replaceFirst('#', '0xFF'),
                                             ),
-                                          ],
-                                        ),
-                                      ),
-                                      Container(
-                                        width: 28.w,
-                                        height: 28.h,
-                                        clipBehavior: Clip.antiAlias,
-                                        decoration: BoxDecoration(
-                                          color: Color(
-                                            int.parse(_product!.colors[1].replaceFirst('#', '0xFF')),
-                                          ),
-                                          borderRadius: BorderRadius.circular(14.r),
-                                          border: Border.all(color: AppColors.background, width: 2.71.w),
-                                        ),
-                                      ),
-                                      Container(
-                                        width: 28.w,
-                                        height: 28.h,
-                                        clipBehavior: Clip.antiAlias,
-                                        decoration: BoxDecoration(
-                                          color: Color(
-                                            int.parse(_product!.colors[2].replaceFirst('#', '0xFF')),
-                                          ),
-                                          borderRadius: BorderRadius.circular(14.r),
-                                          border: Border.all(color: AppColors.background, width: 2.71.w),
-                                        ),
-                                      ),
-                                      Container(
-                                        width: 28.w,
-                                        height: 28.h,
-                                        clipBehavior: Clip.antiAlias,
-                                        decoration: BoxDecoration(
-                                          color: Color(
-                                            int.parse(_product!.colors[0].replaceFirst('#', '0xFF')),
-                                          ),
-                                          borderRadius: BorderRadius.circular(14.r),
-                                          border: Border.all(color: AppColors.background, width: 2.71.w),
-                                        ),
-                                      ),
-                                    ],
+                                          );
+                                          final isSelected = selectedColorIndex == index;
+                                          return GestureDetector(
+                                            onTap: (){
+                                              setState(() {
+                                                selectedColorIndex = index;
+                                              });
+                                            },
+                                            child: Container(
+                                              width: 28.w,
+                                              height: 28.h,
+                                              clipBehavior: Clip.antiAlias,
+                                              decoration: BoxDecoration(
+                                                color: color,
+                                                borderRadius: BorderRadius.circular(14.r),
+                                                border: Border.all(color: AppColors.background, width: 2.71.w),
+                                                boxShadow: isSelected
+                                                  ? [
+                                                    BoxShadow(
+                                                      color: AppColors.textPrimary,
+                                                      spreadRadius: 1.5.r,
+                                                      blurRadius: 0,
+                                                      offset: Offset.zero,
+                                                    ),
+                                                    ]
+                                                  : [],
+                                              ),
+                                            )
+                                          );
+                                        }
+                                    ),
                                   ),
                                 ],
                               ),
@@ -436,64 +430,101 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                   Text(
                                     'Size',
                                     style: TextStyle(
-                                      color: const Color(0xFF12211D) /* dark-text */,
+                                      color: AppColors.textPrimary,
                                       fontSize: 14,
                                       fontFamily: 'Inter',
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
                                   SizedBox(height: 16.h,),
-                                  Row(
-                                    crossAxisAlignment: CrossAxisAlignment.center,
-                                    mainAxisAlignment: MainAxisAlignment.start,
-                                    spacing: 10.w,
-                                    children: [
-                                      Container(
-                                          width: 142.w,
-                                          height: 36.h,
-                                          padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.surface,
-                                            borderRadius: BorderRadius.circular(20.r),
-                                            border: Border.all(color: AppColors.border, width: 1.w),
-                                          ),
-                                          child: Center(
-                                            child: Text(
-                                              '2-seater · 160 cm',
-                                              textAlign: TextAlign.center,
-                                              style: TextStyle(
-                                                color: AppColors.textPrimary,
-                                                fontSize: 12,
-                                                fontFamily: 'Inter',
-                                                fontWeight: FontWeight.w400,
+                                  SizedBox(
+                                    child: _product!.category == 'كنب'
+                                        ?Row(
+                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                      mainAxisAlignment: MainAxisAlignment.start,
+                                      spacing: 10.w,
+                                      children: [
+                                        GestureDetector(
+                                          child: Container(
+                                              width: 142.w,
+                                              height: 36.h,
+                                              padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
+                                              decoration: BoxDecoration(
+                                                color: selectedSize == '2-seater'
+                                                    ? AppColors.primary
+                                                    : AppColors.surface,
+                                                borderRadius: BorderRadius.circular(20.r),
+                                                border: selectedSize == '2-seater'
+                                                    ? Border.fromBorderSide(BorderSide.none)
+                                                    : Border.all(
+                                                  color: AppColors.border,
+                                                  width: 1.w,
+                                                ),
                                               ),
-                                            ),
-                                          )
-                                      ),
-                                      Container(
-                                          width: 142.w,
-                                          height: 36.h,
-                                          padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.primary,
-                                            borderRadius: BorderRadius.circular(20.r),
+                                              child: Center(
+                                                child: Text(
+                                                  '2-seater · 160 cm',
+                                                  textAlign: TextAlign.center,
+                                                  style: TextStyle(
+                                                    color: selectedSize == '2-seater'
+                                                        ? AppColors.surface
+                                                        : AppColors.textPrimary,
+                                                    fontSize: 12,
+                                                    fontFamily: 'Inter',
+                                                    fontWeight: FontWeight.w400,
+                                                  ),
+                                                ),
+                                              )
                                           ),
-                                          child: Center(
-                                            child: Text(
-                                              '3-seater · 210 cm',
-                                              textAlign: TextAlign.center,
-                                              style: TextStyle(
-                                                color: AppColors.surface,
-                                                fontSize: 12,
-                                                fontFamily: 'Inter',
-                                                fontWeight: FontWeight.w400,
+                                          onTap: (){
+                                            setState(() {
+                                              selectedSize = '2-seater';
+                                            });
+                                          },
+                                        ),
+                                        GestureDetector(
+                                          child: Container(
+                                              width: 142.w,
+                                              height: 36.h,
+                                              padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
+                                              decoration: BoxDecoration(
+                                                color: selectedSize == '3-seater'
+                                                    ? AppColors.primary
+                                                    : AppColors.surface,
+                                                borderRadius: BorderRadius.circular(20.r),
+                                                border: selectedSize == '3-seater'
+                                                    ? Border.fromBorderSide(BorderSide.none)
+                                                    : Border.all(
+                                                  color: AppColors.border,
+                                                  width: 1.w,
+                                                ),
                                               ),
-                                            ),
-                                          )
-                                      ),
-                                    ],
+                                              child: Center(
+                                                child: Text(
+                                                  '3-seater · 210 cm',
+                                                  textAlign: TextAlign.center,
+                                                  style: TextStyle(
+                                                    color: selectedSize == '3-seater'
+                                                        ? AppColors.surface
+                                                        : AppColors.textPrimary,
+                                                    fontSize: 12,
+                                                    fontFamily: 'Inter',
+                                                    fontWeight: FontWeight.w400,
+                                                  ),
+                                                ),
+                                              )
+                                          ),
+                                          onTap: (){
+                                            setState(() {
+                                              selectedSize = '3-seater';
+                                            });
+                                          },
+                                        ),
+                                        SizedBox(height: 14.h,),
+                                      ],
+                                    )
+                                        :SizedBox(height: 0.h,),
                                   ),
-                                  SizedBox(height: 14.h,),
 
                                   SizedBox(
                                     width: double.infinity.w,
@@ -675,7 +706,13 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                               side: BorderSide(color: AppColors.border, width: 0.8.w),
                                               padding: EdgeInsets.all(2.w),
                                             ),
-                                            onPressed: (){},
+                                            onPressed: (){
+                                              setState(() {
+                                                if(counter>1){
+                                                  counter--;
+                                                }
+                                              });
+                                            },
                                             icon: Transform.translate(
                                                 offset: Offset(0, -7.h),
                                                 child: Icon(Icons.minimize_rounded,size: 23.34,color: AppColors.textPrimary,)
@@ -683,7 +720,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                         ),
                                       ),
                                       Text(
-                                        '1',
+                                        counter.toString(),
                                         textAlign: TextAlign.center,
                                         style: TextStyle(
                                           color: AppColors.textPrimary,
@@ -700,7 +737,11 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                               backgroundColor: AppColors.primary,
                                               padding: EdgeInsets.all(2.w),
                                             ),
-                                            onPressed: (){},
+                                            onPressed: (){
+                                              setState(() {
+                                                counter++;
+                                              });
+                                            },
                                             icon:  Icon(Icons.add,size: 23.34,color: AppColors.surface,)
                                         ),
                                       ),
@@ -708,60 +749,6 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                   )
                                 ],
                               ),
-                              // Row(
-                              //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              //   spacing: 10,
-                              //   children: [
-                              //     Column(
-                              //       crossAxisAlignment: CrossAxisAlignment.start,
-                              //       spacing: 4.h,
-                              //       children: [
-                              //         Text(
-                              //           'Total price',
-                              //           style: TextStyle(
-                              //             color: AppColors.textSecondary,
-                              //             fontSize: 12,
-                              //             fontFamily: 'Inter',
-                              //             fontWeight: FontWeight.w400,
-                              //           ),
-                              //         ),
-                              //         Text(
-                              //           'EGP 18,500',
-                              //           style: TextStyle(
-                              //             color: AppColors.primary,
-                              //             fontSize: 24,
-                              //             fontFamily: 'Inter',
-                              //             fontWeight: FontWeight.w600,
-                              //           ),
-                              //         )
-                              //       ],
-                              //     ),
-                              //     SizedBox(
-                              //       width: 179.34.w,
-                              //       height: 54.h,
-                              //       child: ElevatedButton(
-                              //           onPressed: (){},
-                              //           child: Row(
-                              //             spacing: 10,
-                              //             children: [
-                              //               Icon(Icons.shopping_cart_outlined, size: 23.34.w,),
-                              //               Text(
-                              //                 'Add to cart',
-                              //                 textAlign: TextAlign.center,
-                              //                 style: TextStyle(
-                              //                   color: AppColors.surface,
-                              //                   fontSize: 18,
-                              //                   fontFamily: 'Inter',
-                              //                   fontWeight: FontWeight.w600,
-                              //                 ),
-                              //               ),
-                              //             ],
-                              //           )
-                              //       ),
-                              //     ),
-                              //
-                              //   ],
-                              // ),
                             ],
                           ),
                         ),
@@ -795,7 +782,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                         ),
                                       ),
                                       Text(
-                                        '${_product!.price}',
+                                        Formatters.price(_product!.price * counter),
                                         style: TextStyle(
                                           color: AppColors.primary,
                                           fontSize: 24,
@@ -809,7 +796,13 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                     width: 179.34.w,
                                     height: 54.h,
                                     child: ElevatedButton(
-                                        onPressed: () => context.go(AppRoutes.cart),
+                                        onPressed: () {
+                                          context.read<CartProvider>().add(_product!, quantity: counter);
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('Added to cart')),
+                                          );
+                                        },
+
                                         child: Row(
                                           spacing: 10,
                                           children: [
@@ -845,17 +838,3 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     );
   }
 }
-
-
-/*actions: [
-        ElevatedButton(
-          onPressed: () => context.push(AppRoutes.arPath(widget.productId)),
-          child: const Text('AR (مؤجل)'),
-        ),
-        const SizedBox(height: 12),
-        ElevatedButton(
-          onPressed: () => context.go(AppRoutes.cart),
-          child: const Text('السلة'),
-        ),
-        const SizedBox(height: 12),
-      ], */
