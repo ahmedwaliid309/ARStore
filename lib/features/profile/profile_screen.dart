@@ -234,7 +234,7 @@ class ProfileScreen extends StatelessWidget {
       _menuRow(
         icon: Icons.photo_camera_outlined,
         label: 'My AR shots',
-        onTap: () => _comingSoon(context),
+        onTap: () => context.push(AppRoutes.arShots),
       ),
       _menuRow(
         icon: Icons.settings_outlined,
