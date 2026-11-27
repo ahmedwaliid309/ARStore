@@ -1,8 +1,10 @@
+import 'package:decora/features/compare/my_ar_shot.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/ar_view/ar_view_screen.dart';
 import '../../features/auth/auth_screen.dart';
 import '../../features/cart/cart_screen.dart';
+import '../../features/compare/my_ar_shot.dart';
 import '../../features/checkout/checkout_screen.dart';
 import '../../features/favorites/favorites_screen.dart';
 import '../../features/home/home_screen.dart';
@@ -43,6 +45,7 @@ class AppRoutes {
   static const orderConfirmation = '/order-confirmation/:id';
   static const orders = '/orders';
   static const settings = '/settings';
+  static const arShots = '/ar-shots';
 
   static String productPath(String id) => '/product/$id';
   static String arPath(String id) => '/ar/$id';
@@ -101,6 +104,10 @@ class AppRouter {
       GoRoute(
         path: AppRoutes.settings,
         builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.arShots,
+        builder: (context, state) => const MyArShotsScreen(),
       ),
 
       // التابات الأربعة. ترتيب الـ Branches = ترتيب الـ destinations في main_shell
