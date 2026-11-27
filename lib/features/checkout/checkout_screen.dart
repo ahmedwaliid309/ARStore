@@ -1,9 +1,3 @@
-// ══════════════════════════════════════════════════════════
-//  الشاشة    : Checkout (إتمام الشراء)
-//  المسؤول   : السيد أسامة
-//  الـ Branch  : feature/checkout
-//  الملف     : lib/features/checkout/checkout_screen.dart
-// ══════════════════════════════════════════════════════════
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
@@ -12,22 +6,9 @@ import 'package:provider/provider.dart';
 import 'package:decora/core/router/app_router.dart';
 import 'package:decora/core/theme/app_colors.dart';
 import 'package:decora/core/widgets/state_views.dart';
+import 'package:decora/features/cart/cart_screen.dart' show kDeliveryFee, egpPrice;
 import 'package:decora/providers/cart_provider.dart';
 import 'package:decora/providers/orders_provider.dart';
-
-
-String _egp(double value) {
-  final digits = value.round().toString();
-  final buf = StringBuffer();
-  for (var i = 0; i < digits.length; i++) {
-    if (i > 0 && (digits.length - i) % 3 == 0) buf.write(',');
-    buf.write(digits[i]);
-  }
-  return 'EGP $buf';
-}
-
-
-const double _deliveryFee = 250;
 
 class _Address {
   const _Address({
@@ -43,7 +24,7 @@ class _Address {
   final String city;
 }
 
-enum _Pay { visa, paypal }
+enum _Pay { card, cash, wallet }
 
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({super.key});
@@ -54,13 +35,8 @@ class CheckoutScreen extends StatefulWidget {
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
 
-  _Address _address = const _Address(
-    name: 'Decora Customer',
-    phone: '+20 100 000 0000',
-    street: '12 Nile Corniche St, Apt 5',
-    city: 'Cairo',
-  );
-  _Pay _pay = _Pay.visa;
+  _Address? _address;
+  _Pay _pay = _Pay.card;
   bool _placing = false;
 
   Future<void> _editAddress() async {
@@ -77,15 +53,30 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final cart = context.read<CartProvider>();
     if (cart.isEmpty) return;
 
+    if (_address == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please add a delivery address')),
+      );
+      return;
+    }
+
     setState(() => _placing = true);
 
-    final order = context.read<OrdersProvider>().placeOrder(
-      items: List.of(cart.items),
-      total: cart.total + _deliveryFee,
-    );
-    cart.clear();
-    if (!mounted) return;
-    context.go(AppRoutes.orderConfirmationPath(order.id));
+    try {
+      final order = context.read<OrdersProvider>().placeOrder(
+        items: List.of(cart.items),
+        total: cart.total + kDeliveryFee,
+      );
+      cart.clear();
+      if (!mounted) return;
+      context.go(AppRoutes.orderConfirmationPath(order.id));
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _placing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Couldn't place your order. Please try again.")),
+      );
+    }
   }
 
   @override
@@ -125,8 +116,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               Padding(
                 padding: EdgeInsets.fromLTRB(24.w, 0, 24.w, 16.h),
                 child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: Size(double.infinity, 54.h),
+                  ),
                   onPressed: _placing ? null : _placeOrder,
-                  child: Text('Place Order · ${_egp(cart.total + _deliveryFee)}'),
+                  child: _placing
+                      ? SizedBox(
+                    width: 22.w,
+                    height: 22.w,
+                    child: const CircularProgressIndicator(strokeWidth: 2),
+                  )
+                      : Text('Place Order · ${egpPrice(cart.total + kDeliveryFee)}'),
                 ),
               ),
           ],
@@ -267,11 +267,13 @@ class _IconBadge extends StatelessWidget {
 class _AddressCard extends StatelessWidget {
   const _AddressCard({required this.address, required this.onEdit});
 
-  final _Address address;
+  final _Address? address;
   final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
+    final a = address;
+
     return _Card(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -286,7 +288,9 @@ class _AddressCard extends StatelessWidget {
                     style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600)),
                 SizedBox(height: 4.h),
                 Text(
-                  '${address.name}\n${address.street}\n${address.city} · ${address.phone}',
+                  a == null
+                      ? 'Add where you want your order delivered'
+                      : '${a.name}\n${a.street}\n${a.city} · ${a.phone}',
                   style: TextStyle(
                     fontSize: 13.sp,
                     height: 1.4,
@@ -298,7 +302,7 @@ class _AddressCard extends StatelessWidget {
           ),
           GestureDetector(
             onTap: onEdit,
-            child: Text('Edit',
+            child: Text(a == null ? 'Add' : 'Edit',
                 style: TextStyle(fontSize: 13.sp, color: AppColors.primary)),
           ),
         ],
@@ -329,19 +333,27 @@ class _PaymentCard extends StatelessWidget {
           ),
           SizedBox(height: 14.h),
           _PayOption(
-            label: 'VISA',
-            title: '•••• 4242',
-            subtitle: 'Expires 08/28',
-            selected: selected == _Pay.visa,
-            onTap: () => onChanged(_Pay.visa),
+            icon: Icons.credit_card,
+            title: 'Credit card',
+            subtitle: 'Visa, Mastercard',
+            selected: selected == _Pay.card,
+            onTap: () => onChanged(_Pay.card),
           ),
           SizedBox(height: 10.h),
           _PayOption(
-            label: 'PayPal',
-            title: '•••• 4242',
-            subtitle: 'Expires 08/28',
-            selected: selected == _Pay.paypal,
-            onTap: () => onChanged(_Pay.paypal),
+            icon: Icons.payments_outlined,
+            title: 'Cash on delivery',
+            subtitle: 'Pay when you receive your order',
+            selected: selected == _Pay.cash,
+            onTap: () => onChanged(_Pay.cash),
+          ),
+          SizedBox(height: 10.h),
+          _PayOption(
+            icon: Icons.account_balance_wallet_outlined,
+            title: 'Mobile wallet',
+            subtitle: 'Vodafone Cash, Orange Cash',
+            selected: selected == _Pay.wallet,
+            onTap: () => onChanged(_Pay.wallet),
           ),
         ],
       ),
@@ -351,14 +363,14 @@ class _PaymentCard extends StatelessWidget {
 
 class _PayOption extends StatelessWidget {
   const _PayOption({
-    required this.label,
+    required this.icon,
     required this.title,
     required this.subtitle,
     required this.selected,
     required this.onTap,
   });
 
-  final String label;
+  final IconData icon;
   final String title;
   final String subtitle;
   final bool selected;
@@ -388,14 +400,7 @@ class _PayOption extends StatelessWidget {
                 color: AppColors.background,
                 borderRadius: BorderRadius.circular(10.r),
               ),
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 11.sp,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.primary,
-                ),
-              ),
+              child: Icon(icon, size: 22.sp, color: AppColors.primary),
             ),
             SizedBox(width: 12.w),
             Expanded(
@@ -481,20 +486,20 @@ class _OrderSummary extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Text(_egp(item.subtotal),
+                  Text(egpPrice(item.subtotal),
                       style: TextStyle(fontSize: 13.sp, color: AppColors.primary)),
                 ],
               ),
             ),
           SizedBox(height: 4.h),
-          row('Subtotal', _egp(cart.total)),
+          row('Subtotal', egpPrice(cart.total)),
           SizedBox(height: 6.h),
-          row('Delivery', _egp(_deliveryFee)),
+          row('Delivery', egpPrice(kDeliveryFee)),
           Padding(
             padding: EdgeInsets.symmetric(vertical: 10.h),
             child: const Divider(height: 1, color: AppColors.border),
           ),
-          row('Total', _egp(cart.total + _deliveryFee), bold: true),
+          row('Total', egpPrice(cart.total + kDeliveryFee), bold: true),
         ],
       ),
     );
@@ -505,7 +510,7 @@ class _OrderSummary extends StatelessWidget {
 class _AddressSheet extends StatefulWidget {
   const _AddressSheet({required this.initial});
 
-  final _Address initial;
+  final _Address? initial;
 
   @override
   State<_AddressSheet> createState() => _AddressSheetState();
@@ -513,10 +518,10 @@ class _AddressSheet extends StatefulWidget {
 
 class _AddressSheetState extends State<_AddressSheet> {
   final _formKey = GlobalKey<FormState>();
-  late final _name = TextEditingController(text: widget.initial.name);
-  late final _phone = TextEditingController(text: widget.initial.phone);
-  late final _street = TextEditingController(text: widget.initial.street);
-  late final _city = TextEditingController(text: widget.initial.city);
+  late final _name = TextEditingController(text: widget.initial?.name);
+  late final _phone = TextEditingController(text: widget.initial?.phone);
+  late final _street = TextEditingController(text: widget.initial?.street);
+  late final _city = TextEditingController(text: widget.initial?.city);
 
   @override
   void dispose() {
