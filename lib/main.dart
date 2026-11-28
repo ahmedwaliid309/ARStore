@@ -1,4 +1,5 @@
 import 'package:decora/data/seed_products.dart';
+import 'package:decora/providers/settings_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -20,6 +21,7 @@ import 'firebase_options.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // await seedProducts();
   runApp(
     MultiProvider(
       providers: [
@@ -28,6 +30,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => CartProvider()),
         ChangeNotifierProvider(create: (_) => FavoritesProvider()),
         ChangeNotifierProvider(create: (_) => OrdersProvider()),
+        ChangeNotifierProvider(create: (_) => SettingsProvider()..load()),
       ],
       child: const DecoraApp(),
     ),

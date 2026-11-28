@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import 'package:decora/core/router/app_router.dart';
 import 'package:decora/core/theme/app_colors.dart';
+import 'package:decora/core/utils/formatters.dart';
 import 'package:decora/core/widgets/state_views.dart';
 import 'package:decora/features/cart/cart_screen.dart' show kDeliveryFee, egpPrice;
 import 'package:decora/providers/cart_provider.dart';
