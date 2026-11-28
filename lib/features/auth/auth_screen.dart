@@ -321,31 +321,14 @@ class _AuthScreenState extends State<AuthScreen> {
             onToggleObscure: () =>
                 setState(() => _hideConfirm = !_hideConfirm),
           ),
-          // موجودة في فريم Register في Figma.
-          SizedBox(height: 14.h),
-          Align(
-            alignment: AlignmentDirectional.centerEnd,
-            child: GestureDetector(
-              onTap: () => _goTo(_AuthStep.forgotEmail),
-              child: Text(
-                'Forgot password?',
-                style: TextStyle(
-                  fontSize: 14.sp,
-                  height: 17 / 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.secondary,
-                ),
-              ),
-            ),
-          ),
+          // مفيش "Forgot password?" هنا: المستخدم لسه بيعمل حساب جديد.
           if (_errorMessage != null) ...[
             SizedBox(height: 12.h),
             _buildError(_errorMessage!),
           ],
           SizedBox(height: 24.h),
-          // النصوص زي فريم Figma حرفيًا (الزرار "Login" والفوتر "Register").
           _primaryButton(
-            label: 'Login',
+            label: 'Register',
             onPressed: _isLoading ? null : _submitAuth,
             loading: _isLoading,
           ),
@@ -354,10 +337,10 @@ class _AuthScreenState extends State<AuthScreen> {
           SizedBox(height: 16.h),
           _googleButton(),
           SizedBox(height: 40.h),
-          // الضغطة هنا بترجّع لـ Login عشان المستخدم ما يتحبسش في Register.
+          // الضغطة هنا بترجّع لـ Login لو عنده حساب بالفعل.
           _buildFooter(
-            text: "Don't have an account?",
-            action: 'Register',
+            text: 'Already have an account?',
+            action: 'Login',
             onTap: () => _goTo(_AuthStep.login),
           ),
         ],
