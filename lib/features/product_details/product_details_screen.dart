@@ -29,6 +29,7 @@ import 'package:provider/provider.dart';
 
 import '../../data/models/product.dart';
 import '../../providers/cart_provider.dart';
+import '../../providers/favorites_provider.dart';
 
 class ProductDetailsScreen extends StatefulWidget {
   const ProductDetailsScreen({super.key, required this.productId});
@@ -46,16 +47,25 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   bool loadingState = true;
   String? _error;
   bool isEmpty = false;
-  bool isFavorite = false;
   int counter = 1;
   int selectedColorIndex = 0;
   bool selected_size = false;
   String selectedSize = '2-seater';
 
   Future<void> _loadProduct()async{
-    loadingState = true;
+
+    setState(() {
+      loadingState =true;
+      _error = null;
+      isEmpty = false;
+    });
+
     try{
-      final product = await ProductRepository().byId(widget.productId);
+      final repo = context.read<ProductRepository>();
+      final product = await repo.byId(widget.productId);
+
+      if (!mounted) return;
+
       if(product == null){
         setState(() {
           isEmpty = true;
@@ -68,6 +78,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         loadingState = false;
       });
     }catch(e){
+      if (!mounted) return;
       setState(() {
         _error = e.toString();
         loadingState = false;
@@ -83,6 +94,12 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+
+
+    final isFavorite = _product != null &&
+        context.watch<FavoritesProvider>().isFavorite(_product!.id);
+
+
     return  Scaffold(
       body: loadingState
         ? LoadingView()
@@ -95,7 +112,13 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             ? EmptyView(title: 'Product Not Found',
                 subtitle: 'This product is currently unavailable.',
                 actionLabel: 'Back',
-                onAction: () => context.pop(),
+                onAction: () {
+                  if(context.canPop()){
+                  context.pop();
+                  }else {
+                    context.go(AppRoutes.products);
+                  }
+                }
             )
             : SafeArea(
         child: Column(
@@ -105,6 +128,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                   children: [
                     Stack(
                       children: [
+                        // ───────────────────────── image ─────────────────────────
                         Container(
                             width: double.infinity.w,
                             height: 315.h,
@@ -127,6 +151,8 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                 },
                                ),
                         ),
+
+                        // ───────────────────────── fav, shear, AR ─────────────────────────
                         Padding(
                             padding: EdgeInsetsGeometry.symmetric(horizontal: 24.w , vertical: 10.h),
                             child:SizedBox(
@@ -147,7 +173,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                             fixedSize: Size(40.w, 40.w),
                                             padding: EdgeInsets.zero,
                                           ),
-                                          onPressed: () => context.go(AppRoutes.home),
+                                          onPressed: () => context.pop(),
                                           icon: Icon(Icons.arrow_back_ios_new_rounded, size: 23.34.w,)
                                       ),
                                       Row(
@@ -161,7 +187,8 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                               ),
                                               onPressed: (){
                                                 setState(() {
-                                                  isFavorite = !isFavorite;
+                                                  context.read<FavoritesProvider>().toggle(_product!);
+
                                                 });
                                               },
                                               icon: Icon( isFavorite ? Icons.favorite : Icons.favorite_border_outlined,
@@ -238,6 +265,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                             spacing: 16.h,
                             children: [
                               Column(
+                                // ───────────────────────── product name, description, rating  ─────────────────────────
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
@@ -324,6 +352,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                 ],
                               ),
 
+                              // ───────────────────────── line ─────────────────────────
                               Container(
                                 width: double.infinity.w,
                                 decoration: ShapeDecoration(
@@ -338,6 +367,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                 ),
                               ),
 
+                              // ───────────────────────── colors ─────────────────────────
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
@@ -409,6 +439,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                 ],
                               ),
 
+                              // ───────────────────────── line ─────────────────────────
                               Container(
                                 width: double.infinity.w,
                                 decoration: ShapeDecoration(
@@ -423,6 +454,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                 ),
                               ),
 
+                              // ───────────────────────── size ─────────────────────────
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -438,91 +470,96 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                   ),
                                   SizedBox(height: 16.h,),
                                   SizedBox(
-                                    child: _product!.category == 'كنب'
-                                        ?Row(
-                                      crossAxisAlignment: CrossAxisAlignment.center,
-                                      mainAxisAlignment: MainAxisAlignment.start,
-                                      spacing: 10.w,
-                                      children: [
-                                        GestureDetector(
-                                          child: Container(
-                                              width: 142.w,
-                                              height: 36.h,
-                                              padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
-                                              decoration: BoxDecoration(
-                                                color: selectedSize == '2-seater'
-                                                    ? AppColors.primary
-                                                    : AppColors.surface,
-                                                borderRadius: BorderRadius.circular(20.r),
-                                                border: selectedSize == '2-seater'
-                                                    ? Border.fromBorderSide(BorderSide.none)
-                                                    : Border.all(
-                                                  color: AppColors.border,
-                                                  width: 1.w,
-                                                ),
-                                              ),
-                                              child: Center(
-                                                child: Text(
-                                                  '2-seater · 160 cm',
-                                                  textAlign: TextAlign.center,
-                                                  style: TextStyle(
-                                                    color: selectedSize == '2-seater'
-                                                        ? AppColors.surface
-                                                        : AppColors.textPrimary,
-                                                    fontSize: 12,
-                                                    fontFamily: 'Inter',
-                                                    fontWeight: FontWeight.w400,
-                                                  ),
-                                                ),
-                                              )
-                                          ),
-                                          onTap: (){
-                                            setState(() {
-                                              selectedSize = '2-seater';
-                                            });
-                                          },
-                                        ),
-                                        GestureDetector(
-                                          child: Container(
-                                              width: 142.w,
-                                              height: 36.h,
-                                              padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
-                                              decoration: BoxDecoration(
-                                                color: selectedSize == '3-seater'
-                                                    ? AppColors.primary
-                                                    : AppColors.surface,
-                                                borderRadius: BorderRadius.circular(20.r),
-                                                border: selectedSize == '3-seater'
-                                                    ? Border.fromBorderSide(BorderSide.none)
-                                                    : Border.all(
-                                                  color: AppColors.border,
-                                                  width: 1.w,
-                                                ),
-                                              ),
-                                              child: Center(
-                                                child: Text(
-                                                  '3-seater · 210 cm',
-                                                  textAlign: TextAlign.center,
-                                                  style: TextStyle(
-                                                    color: selectedSize == '3-seater'
-                                                        ? AppColors.surface
-                                                        : AppColors.textPrimary,
-                                                    fontSize: 12,
-                                                    fontFamily: 'Inter',
-                                                    fontWeight: FontWeight.w400,
-                                                  ),
-                                                ),
-                                              )
-                                          ),
-                                          onTap: (){
-                                            setState(() {
-                                              selectedSize = '3-seater';
-                                            });
-                                          },
-                                        ),
-                                        SizedBox(height: 14.h,),
-                                      ],
-                                    )
+                                    child: _product!.category == 'Sofas'
+                                        ?Column(
+                                           children: [
+                                             Row(
+                                               crossAxisAlignment: CrossAxisAlignment.center,
+                                               mainAxisAlignment: MainAxisAlignment.start,
+                                               spacing: 10.w,
+                                               children: [
+                                                 GestureDetector(
+                                                   child: Container(
+                                                       width: 142.w,
+                                                       height: 36.h,
+                                                       padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
+                                                       decoration: BoxDecoration(
+                                                         color: selectedSize == '2-seater'
+                                                             ? AppColors.primary
+                                                             : AppColors.surface,
+                                                         borderRadius: BorderRadius.circular(20.r),
+                                                         border: selectedSize == '2-seater'
+                                                             ? Border.fromBorderSide(BorderSide.none)
+                                                             : Border.all(
+                                                           color: AppColors.border,
+                                                           width: 1.w,
+                                                         ),
+                                                       ),
+                                                       child: Center(
+                                                         child: Text(
+                                                           '2-seater · 160 cm',
+                                                           textAlign: TextAlign.center,
+                                                           style: TextStyle(
+                                                             color: selectedSize == '2-seater'
+                                                                 ? AppColors.surface
+                                                                 : AppColors.textPrimary,
+                                                             fontSize: 12,
+                                                             fontFamily: 'Inter',
+                                                             fontWeight: FontWeight.w400,
+                                                           ),
+                                                         ),
+                                                       )
+                                                   ),
+                                                   onTap: (){
+                                                     setState(() {
+                                                       selectedSize = '2-seater';
+                                                     });
+                                                   },
+                                                 ),
+                                                 GestureDetector(
+                                                   child: Container(
+                                                       width: 142.w,
+                                                       height: 36.h,
+                                                       padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
+                                                       decoration: BoxDecoration(
+                                                         color: selectedSize == '3-seater'
+                                                             ? AppColors.primary
+                                                             : AppColors.surface,
+                                                         borderRadius: BorderRadius.circular(20.r),
+                                                         border: selectedSize == '3-seater'
+                                                             ? Border.fromBorderSide(BorderSide.none)
+                                                             : Border.all(
+                                                           color: AppColors.border,
+                                                           width: 1.w,
+                                                         ),
+                                                       ),
+                                                       child: Center(
+                                                         child: Text(
+                                                           '3-seater · 210 cm',
+                                                           textAlign: TextAlign.center,
+                                                           style: TextStyle(
+                                                             color: selectedSize == '3-seater'
+                                                                 ? AppColors.surface
+                                                                 : AppColors.textPrimary,
+                                                             fontSize: 12,
+                                                             fontFamily: 'Inter',
+                                                             fontWeight: FontWeight.w400,
+                                                           ),
+                                                         ),
+                                                       )
+                                                   ),
+                                                   onTap: (){
+                                                     setState(() {
+                                                       selectedSize = '3-seater';
+                                                     });
+                                                   },
+                                                 ),
+
+                                               ],
+                                             ),
+                                             SizedBox(height: 14.h,),
+                                            ],
+                                           )
                                         :SizedBox(height: 0.h,),
                                   ),
 
@@ -652,6 +689,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                 ],
                               ),
 
+                              // ───────────────────────── line ─────────────────────────
                               Container(
                                 width: double.infinity.w,
                                 decoration: ShapeDecoration(
@@ -666,6 +704,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                 ),
                               ),
 
+                              // ───────────────────────── quantity ─────────────────────────
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
@@ -754,6 +793,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                         ),
                       ),
                     ),
+                    // ───────────────────────── total price,add to cart ─────────────────────────
                     Positioned(
                         left: 0.w,
                         right: 0.w,
@@ -762,7 +802,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                           width: double.infinity.w,
                           color: AppColors.surface,
                           child: Padding(
-                            padding: EdgeInsetsGeometry.symmetric(horizontal: 24.w),
+                            padding: EdgeInsetsGeometry.symmetric(horizontal: 24.w, vertical: 6.h),
                             child: SizedBox(
                               child:  Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
