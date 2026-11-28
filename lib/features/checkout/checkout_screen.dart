@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -7,7 +8,7 @@ import 'package:decora/core/router/app_router.dart';
 import 'package:decora/core/theme/app_colors.dart';
 import 'package:decora/core/utils/formatters.dart';
 import 'package:decora/core/widgets/state_views.dart';
-import 'package:decora/features/cart/cart_screen.dart' show kDeliveryFee;
+import 'package:decora/features/cart/cart_screen.dart' show kDeliveryFee, egpPrice;
 import 'package:decora/providers/cart_provider.dart';
 import 'package:decora/providers/orders_provider.dart';
 
@@ -127,7 +128,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     height: 22.w,
                     child: const CircularProgressIndicator(strokeWidth: 2),
                   )
-                      : Text('Place Order · ${Formatters.price(cart.total + kDeliveryFee)}'),
+                      : Text('Place Order · ${egpPrice(cart.total + kDeliveryFee)}'),
                 ),
               ),
           ],
@@ -487,20 +488,20 @@ class _OrderSummary extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Text(Formatters.price(item.subtotal),
+                  Text(egpPrice(item.subtotal),
                       style: TextStyle(fontSize: 13.sp, color: AppColors.primary)),
                 ],
               ),
             ),
           SizedBox(height: 4.h),
-          row('Subtotal', Formatters.price(cart.total)),
+          row('Subtotal', egpPrice(cart.total)),
           SizedBox(height: 6.h),
-          row('Delivery', Formatters.price(kDeliveryFee)),
+          row('Delivery', egpPrice(kDeliveryFee)),
           Padding(
             padding: EdgeInsets.symmetric(vertical: 10.h),
             child: const Divider(height: 1, color: AppColors.border),
           ),
-          row('Total', Formatters.price(cart.total + kDeliveryFee), bold: true),
+          row('Total', egpPrice(cart.total + kDeliveryFee), bold: true),
         ],
       ),
     );
@@ -537,9 +538,11 @@ class _AddressSheetState extends State<_AddressSheet> {
       (v == null || v.trim().isEmpty) ? 'Please enter $what' : null;
 
   String? _phoneCheck(String? v) {
-    final digits = (v ?? '').replaceAll(RegExp(r'[\s\-+]'), '');
+    final digits = (v ?? '').trim();
     if (digits.isEmpty) return 'Please enter your phone number';
-    if (!RegExp(r'^\d{10,13}$').hasMatch(digits)) return 'Enter a valid phone number';
+    if (!RegExp(r'^\d{11}$').hasMatch(digits)) {
+      return 'Phone number must be 11 digits';
+    }
     return null;
   }
 
@@ -586,7 +589,12 @@ class _AddressSheetState extends State<_AddressSheet> {
                 controller: _phone,
                 keyboardType: TextInputType.phone,
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(labelText: 'Phone'),
+                maxLength: 11,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: const InputDecoration(
+                  labelText: 'Phone',
+                  counterText: '',
+                ),
                 validator: _phoneCheck,
               ),
               SizedBox(height: 12.h),
